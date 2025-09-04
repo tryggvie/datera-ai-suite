@@ -283,6 +283,8 @@ async def chat(
         # Initialize model_to_use for error handling
         final_model_used = model_to_use
         
+        logger.info(f"Request {request_id}: Processing chat with persona '{request.bot_id}' (v{persona['version']}) using model {model_to_use}, verbosity: {request.verbosity}")
+        
         # Prepare Response API parameters with persona instructions
         response_params = {
             "model": model_to_use,
@@ -306,8 +308,6 @@ async def chat(
             response_params["temperature"] = temperature
         if max_tokens and max_tokens > 0:
             response_params["max_tokens"] = max_tokens
-        
-        logger.info(f"Request {request_id}: Processing chat with persona '{request.bot_id}' (v{persona['version']}) using model {model_to_use}, verbosity: {request.verbosity}")
         
         # Create streaming response (simulated since Response API doesn't support streaming yet)
         async def generate_response():
