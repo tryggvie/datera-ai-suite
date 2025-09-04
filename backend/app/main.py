@@ -41,11 +41,30 @@ app = FastAPI(title="AI Assistant Suite Backend", version="1.0.0")
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
 # Add localhost for testing
 allowed_origins.extend(["http://localhost:3000", "http://127.0.0.1:3000"])
+
+# Add Vercel pattern matching for dynamic URLs
+import re
+def is_allowed_origin(origin: str) -> bool:
+    if not origin:
+        return False
+    
+    # Check exact matches first
+    if origin in [o.strip() for o in allowed_origins if o.strip()]:
+        return True
+    
+    # Check Vercel pattern: https://datera-ai-suite-*.vercel.app
+    vercel_pattern = r'^https://datera-ai-suite-[a-zA-Z0-9]+-datera\.vercel\.app$'
+    if re.match(vercel_pattern, origin):
+        return True
+    
+    return False
+
 app.add_middleware(
     CORSMiddleware,
+    allow_origin_regex=r"https://datera-ai-suite-.*\.vercel\.app",
     allow_origins=[origin.strip() for origin in allowed_origins if origin.strip()],
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
