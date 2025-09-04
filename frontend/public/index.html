@@ -80,10 +80,18 @@
         .coming-soon-badge {
             background-color: #F59E0B;
             color: white;
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 4px;
+            font-size: 9px;
+            padding: 1px 4px;
+            border-radius: 3px;
             margin-left: 8px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        
+        .bot-pill span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         /* Typing indicator */
@@ -110,7 +118,7 @@
 <body class="h-screen flex text-gray-800">
 
     <!-- Sidebar -->
-    <aside class="w-72 bg-white border-r border-gray-200 flex flex-col shrink-0">
+    <aside class="w-80 bg-white border-r border-gray-200 flex flex-col shrink-0">
         <!-- Header & Bot Selection -->
         <div class="p-4 sidebar-bg flex-shrink-0">
              <div class="flex items-center h-16 mb-4">
