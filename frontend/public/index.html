@@ -253,8 +253,13 @@
 
     <script>
         // --- Configuration ---
-        const API_BASE_URL = 'https://datera-ai-suite-production.up.railway.app'; // Railway backend
-        const GATEWAY_TOKEN = 'c17e4ea45486a836e15eae268ecc5043312c96f5bec19a9fc9f1452f30b361bd'; // Railway gateway token
+        // Configuration that works for both local and Vercel
+        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? 'http://localhost:8000' 
+            : 'https://datera-ai-suite-production.up.railway.app';
+        const GATEWAY_TOKEN = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'test_gateway_token_123'
+            : 'c17e4ea45486a836e15eae268ecc5043312c96f5bec19a9fc9f1452f30b361bd';
         
         // --- Global State ---
         let currentConversationId = 'conv1';
