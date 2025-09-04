@@ -4,6 +4,7 @@ import uuid
 import time
 import logging
 import asyncio
+import hashlib
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,6 +34,58 @@ logger.info(f"Starting AI Assistant Suite Backend - Log Level: {log_level}")
 logger.info(f"OpenAI API Key configured: {'Yes' if os.getenv('OPENAI_API_KEY') else 'No'}")
 logger.info(f"Gateway Token configured: {'Yes' if os.getenv('GATEWAY_TOKEN') else 'No'}")
 logger.info(f"Allowed Origins: {os.getenv('ALLOWED_ORIGINS', 'Not set')}")
+
+# Persona system
+persona_cache: Dict[str, Dict[str, Any]] = {}
+
+def load_personas():
+    """Load persona registry and instructions files into memory"""
+    global persona_cache
+    persona_cache.clear()
+    
+    try:
+        # Load persona registry
+        registry_path = os.path.join(os.path.dirname(__file__), "..", "config", "personas.registry.json")
+        with open(registry_path, 'r', encoding='utf-8') as f:
+            registry = json.load(f)
+        
+        logger.info(f"Loading {len(registry['personas'])} personas from registry")
+        
+        for persona in registry['personas']:
+            persona_id = persona['id']
+            
+            # Load instructions file
+            instructions_path = os.path.join(os.path.dirname(__file__), "..", persona['instructions_path'])
+            try:
+                with open(instructions_path, 'r', encoding='utf-8') as f:
+                    instructions_text = f.read()
+                
+                # Compute SHA256 hash
+                instructions_sha256 = hashlib.sha256(instructions_text.encode('utf-8')).hexdigest()
+                
+                # Store in cache
+                persona_cache[persona_id] = {
+                    'text': instructions_text,
+                    'sha256': instructions_sha256,
+                    **persona  # Include all registry fields
+                }
+                
+                logger.info(f"Loaded persona '{persona_id}' (v{persona['version']}) - SHA256: {instructions_sha256[:8]}...")
+                
+            except FileNotFoundError:
+                logger.error(f"Instructions file not found for persona '{persona_id}': {instructions_path}")
+            except Exception as e:
+                logger.error(f"Error loading persona '{persona_id}': {str(e)}")
+        
+        logger.info(f"Successfully loaded {len(persona_cache)} personas")
+        
+    except FileNotFoundError:
+        logger.error("Persona registry not found, no personas loaded")
+    except Exception as e:
+        logger.error(f"Error loading persona registry: {str(e)}")
+
+# Load personas on startup
+load_personas()
 
 # Initialize FastAPI app
 app = FastAPI(title="AI Assistant Suite Backend", version="1.0.0")
@@ -83,19 +136,19 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: List[ChatMessage]
-    bot_id: str = "general"
+    bot_id: str  # Required field
     model: str = "gpt-5"
     verbosity: str = "medium"  # low, medium, high
     reasoning_effort: str = "medium"  # minimal, medium, high
     temperature: float = 0.7
     max_tokens: Optional[int] = None
+    format_mode: Optional[str] = None  # "brief" for concise responses
 
 class HealthResponse(BaseModel):
     status: str
     api: str = "gpt-5-responses"
 
-# Bot configuration (in production, this would come from a database)
-ENABLED_BOTS = {"general"}
+# Bot configuration is now handled by persona system
 
 def verify_gateway_token(request: Request):
     """Verify the gateway token from Authorization header"""
@@ -130,21 +183,45 @@ async def get_logs(lines: int = 50):
         logger.error(f"Error reading logs: {str(e)}")
         return {"error": str(e)}
 
+@app.post("/admin/reload-personas")
+async def reload_personas(token: str = Depends(verify_gateway_token)):
+    """Hot-reload personas from registry and instructions files"""
+    try:
+        load_personas()
+        return {
+            "status": "success",
+            "message": f"Reloaded {len(persona_cache)} personas",
+            "personas": list(persona_cache.keys())
+        }
+    except Exception as e:
+        logger.error(f"Error reloading personas: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
 @app.post("/v1/chat")
 async def chat(
     request: ChatRequest,
     token: str = Depends(verify_gateway_token)
 ):
-    """Chat endpoint using GPT-5 Response API"""
+    """Chat endpoint using GPT-5 Response API with persona support"""
     request_id = str(uuid.uuid4())
     start_time = time.time()
     
-    # Validate bot_id
-    if request.bot_id not in ENABLED_BOTS:
+    # Validate bot_id and get persona
+    if request.bot_id not in persona_cache:
+        logger.warning(f"Request {request_id}: Unknown bot_id '{request.bot_id}' requested")
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Bot '{request.bot_id}' not found"
+        )
+    
+    persona = persona_cache[request.bot_id]
+    
+    # Check if persona is enabled
+    if not persona.get('enabled', False):
         logger.warning(f"Request {request_id}: Disabled bot_id '{request.bot_id}' requested")
         raise HTTPException(
             status_code=501, 
-            detail=f"Bot '{request.bot_id}' is not available yet"
+            detail="Bot not enabled"
         )
     
     try:
@@ -156,21 +233,45 @@ async def chat(
             # Multiple messages - use as input array
             input_data = [{"role": msg.role, "content": msg.content} for msg in request.messages]
         
-        # Prepare Response API parameters with web search tool
-        # Try gpt-5 first, fallback to gpt-4o for testing web search
+        # Add format mode instruction if requested
+        if request.format_mode == "brief":
+            if isinstance(input_data, str):
+                input_data = f"For this answer only, keep to concise bullets (≤100 words).\n\n{input_data}"
+            else:
+                # Add system message for brief mode
+                input_data.insert(0, {"role": "system", "content": "For this answer only, keep to concise bullets (≤100 words)."})
+        
+        # Use persona model and settings
+        model_to_use = persona.get('model', request.model)
+        fallback_model = persona.get('fallback_model', 'gpt-4o')
+        temperature = persona.get('temperature', request.temperature)
+        max_tokens = persona.get('max_output_tokens', request.max_tokens)
+        
+        # Prepare Response API parameters with persona instructions
         response_params = {
-            "model": request.model,  # Use requested model (gpt-5)
+            "model": model_to_use,
             "input": input_data,
+            "instructions": persona['text'],  # Full markdown content from persona instructions
             "tools": [{"type": "web_search"}],  # Enable web search
             "text": {
                 "verbosity": request.verbosity
             },
             "reasoning": {
                 "effort": request.reasoning_effort
+            },
+            "metadata": {
+                "persona_id": request.bot_id,
+                "persona_version": persona['version']
             }
         }
         
-        logger.info(f"Request {request_id}: Processing chat with {request.model} Response API with web search enabled, verbosity: {request.verbosity}")
+        # Add temperature and max_tokens if specified
+        if temperature != 0.7:
+            response_params["temperature"] = temperature
+        if max_tokens and max_tokens > 0:
+            response_params["max_tokens"] = max_tokens
+        
+        logger.info(f"Request {request_id}: Processing chat with persona '{request.bot_id}' (v{persona['version']}) using model {model_to_use}, verbosity: {request.verbosity}")
         
         # Create streaming response (simulated since Response API doesn't support streaming yet)
         async def generate_response():
@@ -179,49 +280,56 @@ async def chat(
                 try:
                     response = client.responses.create(**response_params)
                 except (AttributeError, Exception) as e:
-                    # If gpt-5 fails, try gpt-4o with web search for testing
-                    if request.model == "gpt-5":
-                        logger.warning(f"GPT-5 Response API failed ({str(e)}), trying GPT-4o with web search")
+                    # Try fallback model if primary model fails
+                    if model_to_use != fallback_model:
+                        logger.warning(f"Primary model {model_to_use} failed ({str(e)}), trying fallback model {fallback_model}")
                         try:
-                            # Try gpt-4o with web search
-                            test_params = response_params.copy()
-                            test_params["model"] = "gpt-4o"
-                            response = client.responses.create(**test_params)
-                            logger.info("Successfully used GPT-4o with web search")
+                            fallback_params = response_params.copy()
+                            fallback_params["model"] = fallback_model
+                            response = client.responses.create(**fallback_params)
+                            model_to_use = fallback_model  # Update for logging
+                            logger.info(f"Successfully used fallback model {fallback_model}")
                         except Exception as e2:
-                            logger.warning(f"GPT-4o Response API also failed ({str(e2)}), falling back to Chat Completions")
+                            logger.warning(f"Fallback model {fallback_model} also failed ({str(e2)}), falling back to Chat Completions")
                             # Final fallback to Chat Completions
                             if isinstance(input_data, str):
                                 openai_messages = [{"role": "user", "content": input_data}]
                             else:
                                 openai_messages = input_data
                             
+                            # Add persona instructions as system message
+                            openai_messages.insert(0, {"role": "system", "content": persona['text']})
+                            
                             chat_params = {
-                                "model": "gpt-4o",
+                                "model": fallback_model,
                                 "messages": openai_messages
                             }
-                            if request.temperature != 0.7:
-                                chat_params["temperature"] = request.temperature
-                            if request.max_tokens and request.max_tokens > 0:
-                                chat_params["max_tokens"] = request.max_tokens
+                            if temperature != 0.7:
+                                chat_params["temperature"] = temperature
+                            if max_tokens and max_tokens > 0:
+                                chat_params["max_tokens"] = max_tokens
 
                             response = client.chat.completions.create(**chat_params)
+                            model_to_use = fallback_model  # Update for logging
                     else:
                         # For other models, fall back to Chat Completions
-                        logger.warning(f"Response API not available for {request.model}, falling back to Chat Completions")
+                        logger.warning(f"Response API not available for {model_to_use}, falling back to Chat Completions")
                         if isinstance(input_data, str):
                             openai_messages = [{"role": "user", "content": input_data}]
                         else:
                             openai_messages = input_data
                         
+                        # Add persona instructions as system message
+                        openai_messages.insert(0, {"role": "system", "content": persona['text']})
+                        
                         chat_params = {
-                            "model": request.model,
+                            "model": model_to_use,
                             "messages": openai_messages
                         }
-                        if request.temperature != 0.7:
-                            chat_params["temperature"] = request.temperature
-                        if request.max_tokens and request.max_tokens > 0:
-                            chat_params["max_tokens"] = request.max_tokens
+                        if temperature != 0.7:
+                            chat_params["temperature"] = temperature
+                        if max_tokens and max_tokens > 0:
+                            chat_params["max_tokens"] = max_tokens
 
                         response = client.chat.completions.create(**chat_params)
                     # Convert to Response API format for consistency
@@ -268,6 +376,15 @@ async def chat(
                 if reasoning_summary:
                     yield f"data: {json.dumps({'reasoning_summary': reasoning_summary})}\n\n"
                 
+                # Send response metadata
+                metadata = {
+                    'persona_id': request.bot_id,
+                    'persona_version': persona['version'],
+                    'model': model_to_use,
+                    'instructions_sha256': persona['sha256']
+                }
+                yield f"data: {json.dumps({'metadata': metadata})}\n\n"
+                
                 # Send completion signal
                 yield f"data: {json.dumps({'done': True})}\n\n"
                 
@@ -278,7 +395,7 @@ async def chat(
         
         # Log request completion
         latency = time.time() - start_time
-        logger.info(f"Request {request_id}: Completed in {latency:.2f}s")
+        logger.info(f"Request {request_id}: Completed in {latency:.2f}s - Persona: {request.bot_id} (v{persona['version']}), Model: {model_to_use}, SHA256: {persona['sha256'][:8]}...")
         
         return StreamingResponse(
             generate_response(),

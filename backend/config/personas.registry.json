@@ -1,0 +1,18 @@
+{
+  "personas": [
+    {
+      "id": "mktg_strategist",
+      "display_name": "Marketing Communications Strategist",
+      "version": "v1",
+      "model": "gpt-5",
+      "fallback_model": "gpt-4o-mini",
+      "instructions_path": "prompts/personas-instructions/marketing_comms_strategist_v1.md",
+      "temperature": 0.4,
+      "max_output_tokens": 800,
+      "tool_whitelist": [],
+      "language_default": "en",
+      "enabled": true,
+      "notes": "Specialized in marketing strategy, brand positioning, and communication planning"
+    }
+  ]
+}
