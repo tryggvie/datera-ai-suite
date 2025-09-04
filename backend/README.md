@@ -36,3 +36,4 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ## Deployment
 
 See RUNBOOK.md for Railway deployment instructions.
+# Force redeploy Thu Sep  4 22:57:58 GMT 2025
