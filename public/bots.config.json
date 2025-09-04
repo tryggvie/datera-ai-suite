@@ -1,0 +1,26 @@
+[
+  {
+    "id": "general",
+    "name": "General",
+    "description": "General-purpose assistant",
+    "enabled": true
+  },
+  {
+    "id": "research",
+    "name": "Research",
+    "description": "Deeper research assistant",
+    "enabled": false
+  },
+  {
+    "id": "creative",
+    "name": "Creative",
+    "description": "Creative writing and ideation",
+    "enabled": false
+  },
+  {
+    "id": "technical",
+    "name": "Technical",
+    "description": "Technical problem solving",
+    "enabled": false
+  }
+]
