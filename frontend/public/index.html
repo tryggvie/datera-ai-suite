@@ -682,6 +682,13 @@
             isStreaming = true;
             sendMessageButton.disabled = true;
             
+            // Map bot IDs to persona IDs
+            const botToPersonaMap = {
+                'general': 'mktg_strategist'  // General GPT-5 uses marketing strategist persona
+            };
+            
+            const personaId = botToPersonaMap[currentBotId] || currentBotId;
+            
             try {
                 const response = await fetch(`${API_BASE_URL}/v1/chat`, {
                     method: 'POST',
@@ -691,7 +698,7 @@
                     },
                     body: JSON.stringify({
                         messages: [{ role: 'user', content: text }],
-                        bot_id: currentBotId,
+                        bot_id: personaId,
                         model: 'gpt-5',
                         verbosity: 'medium',
                         reasoning_effort: 'medium'
@@ -765,7 +772,7 @@
                                     text: `Error: ${e.message}`
                                 });
                                 saveConversations();
-                                displayMessages();
+                                renderMessages();
                                 break;
                             }
                         }
@@ -786,7 +793,7 @@
                     text: `API Error: ${error.message}`
                 });
                 saveConversations();
-                displayMessages();
+                renderMessages();
             } finally {
                 isStreaming = false;
                 sendMessageButton.disabled = false;
