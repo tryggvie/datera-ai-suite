@@ -157,8 +157,9 @@ async def chat(
             input_data = [{"role": msg.role, "content": msg.content} for msg in request.messages]
         
         # Prepare Response API parameters with web search tool
+        # Try gpt-5 first, fallback to gpt-4o for testing web search
         response_params = {
-            "model": request.model,
+            "model": request.model,  # Use requested model (gpt-5)
             "input": input_data,
             "tools": [{"type": "web_search"}],  # Enable web search
             "text": {
@@ -169,7 +170,7 @@ async def chat(
             }
         }
         
-        logger.info(f"Request {request_id}: Processing chat with GPT-5 Response API with web search enabled, verbosity: {request.verbosity}")
+        logger.info(f"Request {request_id}: Processing chat with {request.model} Response API with web search enabled, verbosity: {request.verbosity}")
         
         # Create streaming response (simulated since Response API doesn't support streaming yet)
         async def generate_response():
@@ -177,30 +178,52 @@ async def chat(
                 # Make the API call - try Response API first, fallback to Chat Completions
                 try:
                     response = client.responses.create(**response_params)
-                except AttributeError:
-                    # Fallback to Chat Completions API if Response API not available
-                    logger.warning("Response API not available, falling back to Chat Completions")
-                    # Convert input_data to messages format for Chat Completions
-                    if isinstance(input_data, str):
-                        openai_messages = [{"role": "user", "content": input_data}]
-                    else:
-                        openai_messages = input_data
-                    
-                    # Use a compatible model for Chat Completions (gpt-5 might not be available)
-                    fallback_model = "gpt-4o" if request.model == "gpt-5" else request.model
-                    
-                    # Prepare parameters for Chat Completions
-                    chat_params = {
-                        "model": fallback_model,
-                        "messages": openai_messages
-                    }
-                    # Only add temperature if it's not the default (some models don't support custom temperature)
-                    if request.temperature != 0.7:
-                        chat_params["temperature"] = request.temperature
-                    if request.max_tokens and request.max_tokens > 0:
-                        chat_params["max_tokens"] = request.max_tokens
+                except (AttributeError, Exception) as e:
+                    # If gpt-5 fails, try gpt-4o with web search for testing
+                    if request.model == "gpt-5":
+                        logger.warning(f"GPT-5 Response API failed ({str(e)}), trying GPT-4o with web search")
+                        try:
+                            # Try gpt-4o with web search
+                            test_params = response_params.copy()
+                            test_params["model"] = "gpt-4o"
+                            response = client.responses.create(**test_params)
+                            logger.info("Successfully used GPT-4o with web search")
+                        except Exception as e2:
+                            logger.warning(f"GPT-4o Response API also failed ({str(e2)}), falling back to Chat Completions")
+                            # Final fallback to Chat Completions
+                            if isinstance(input_data, str):
+                                openai_messages = [{"role": "user", "content": input_data}]
+                            else:
+                                openai_messages = input_data
+                            
+                            chat_params = {
+                                "model": "gpt-4o",
+                                "messages": openai_messages
+                            }
+                            if request.temperature != 0.7:
+                                chat_params["temperature"] = request.temperature
+                            if request.max_tokens and request.max_tokens > 0:
+                                chat_params["max_tokens"] = request.max_tokens
 
-                    response = client.chat.completions.create(**chat_params)
+                            response = client.chat.completions.create(**chat_params)
+                    else:
+                        # For other models, fall back to Chat Completions
+                        logger.warning(f"Response API not available for {request.model}, falling back to Chat Completions")
+                        if isinstance(input_data, str):
+                            openai_messages = [{"role": "user", "content": input_data}]
+                        else:
+                            openai_messages = input_data
+                        
+                        chat_params = {
+                            "model": request.model,
+                            "messages": openai_messages
+                        }
+                        if request.temperature != 0.7:
+                            chat_params["temperature"] = request.temperature
+                        if request.max_tokens and request.max_tokens > 0:
+                            chat_params["max_tokens"] = request.max_tokens
+
+                        response = client.chat.completions.create(**chat_params)
                     # Convert to Response API format for consistency
                     class MockResponse:
                         def __init__(self, chat_response):
