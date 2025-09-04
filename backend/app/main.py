@@ -324,6 +324,7 @@ async def chat(
                             fallback_params["model"] = fallback_model
                             response = client.responses.create(**fallback_params)
                             model_to_use = fallback_model  # Update for logging
+                            final_model_used = fallback_model  # Update final model
                             logger.info(f"Successfully used fallback model {fallback_model}")
                         except Exception as e2:
                             logger.warning(f"Fallback model {fallback_model} also failed ({str(e2)}), falling back to Chat Completions")
@@ -347,6 +348,7 @@ async def chat(
 
                             response = client.chat.completions.create(**chat_params)
                             model_to_use = fallback_model  # Update for logging
+                            final_model_used = fallback_model  # Update final model
                     else:
                         # For other models, fall back to Chat Completions
                         logger.warning(f"Response API not available for {model_to_use}, falling back to Chat Completions")
@@ -368,6 +370,7 @@ async def chat(
                             chat_params["max_tokens"] = max_tokens
 
                         response = client.chat.completions.create(**chat_params)
+                        final_model_used = model_to_use  # Update final model
                     # Convert to Response API format for consistency
                     class MockResponse:
                         def __init__(self, chat_response):
