@@ -280,6 +280,9 @@ async def chat(
         temperature = persona.get('temperature', request.temperature)
         max_tokens = persona.get('max_output_tokens', request.max_tokens)
         
+        # Initialize model_to_use for error handling
+        final_model_used = model_to_use
+        
         # Prepare Response API parameters with persona instructions
         response_params = {
             "model": model_to_use,
@@ -413,7 +416,7 @@ async def chat(
                 metadata = {
                     'persona_id': request.bot_id,
                     'persona_version': persona['version'],
-                    'model': model_to_use,
+                    'model': final_model_used,
                     'instructions_sha256': persona['sha256']
                 }
                 yield f"data: {json.dumps({'metadata': metadata})}\n\n"
@@ -428,7 +431,7 @@ async def chat(
         
         # Log request completion
         latency = time.time() - start_time
-        logger.info(f"Request {request_id}: Completed in {latency:.2f}s - Persona: {request.bot_id} (v{persona['version']}), Model: {model_to_use}, SHA256: {persona['sha256'][:8]}...")
+        logger.info(f"Request {request_id}: Completed in {latency:.2f}s - Persona: {request.bot_id} (v{persona['version']}), Model: {final_model_used}, SHA256: {persona['sha256'][:8]}...")
         
         return StreamingResponse(
             generate_response(),
