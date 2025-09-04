@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # AI Assistants Suite
 
 A minimal chatbot stack built with FastAPI (Railway) + Vercel + OpenAI.
@@ -236,3 +237,6 @@ See `RUNBOOK.md` for detailed deployment instructions:
 ## License
 
 This project is provided as-is for demonstration purposes.
+=======
+# datera-ai-suite
+>>>>>>> 16f79b4eaefc80109d6ecb7768fb74c0df263d4a
