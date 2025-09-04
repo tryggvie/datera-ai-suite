@@ -201,7 +201,10 @@ async def chat(
                     class MockResponse:
                         def __init__(self, chat_response):
                             self.output_text = chat_response.choices[0].message.content
-                            self.output = [type('obj', (object,), {'content': [type('obj', (object,), {'text': self.output_text})]})()]
+                            # Create a proper output structure
+                            content_obj = type('Content', (), {'text': self.output_text})()
+                            item_obj = type('Item', (), {'content': [content_obj]})()
+                            self.output = [item_obj]
                             self.model = chat_response.model
                             self.usage = chat_response.usage
                     response = MockResponse(response)
@@ -210,13 +213,22 @@ async def chat(
                 output_text = ""
                 reasoning_summary = None
                 
-                for item in response.output:
-                    if hasattr(item, "content"):
-                        for content in item.content:
-                            if hasattr(content, "text"):
-                                output_text += content.text
-                    elif hasattr(item, "summary") and item.summary:
-                        reasoning_summary = item.summary[0].text if item.summary else None
+                # Handle both Response API and MockResponse formats
+                if hasattr(response, 'output_text'):
+                    # Direct access to output_text (MockResponse)
+                    output_text = response.output_text or ""
+                elif hasattr(response, 'output') and response.output:
+                    # Response API format
+                    for item in response.output:
+                        if hasattr(item, "content") and item.content:
+                            for content in item.content:
+                                if hasattr(content, "text") and content.text:
+                                    output_text += content.text
+                        elif hasattr(item, "summary") and item.summary:
+                            reasoning_summary = item.summary[0].text if item.summary else None
+                else:
+                    logger.error(f"Request {request_id}: No valid output found in response")
+                    output_text = "Sorry, I couldn't generate a response. Please try again."
                 
                 # Simulate streaming by sending chunks
                 chunk_size = 50

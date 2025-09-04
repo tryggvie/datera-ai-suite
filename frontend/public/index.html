@@ -185,6 +185,18 @@
             </div>
         </header>
 
+        <!-- Debug Panel (temporarily visible) -->
+        <div id="debugPanel" class="bg-yellow-50 border-b border-yellow-200 p-2 text-xs">
+            <div class="flex justify-between items-center">
+                <span class="font-semibold text-yellow-800">Debug Mode</span>
+                <button onclick="toggleDebugPanel()" class="text-yellow-600 hover:text-yellow-800">Hide</button>
+            </div>
+            <div id="debugInfo" class="mt-1 text-yellow-700">
+                <div>API: <span id="debugApiUrl">-</span></div>
+                <div>Last Error: <span id="debugLastError">None</span></div>
+            </div>
+        </div>
+
         <!-- Chat Output -->
         <div id="chat-output" class="flex-1 p-6 space-y-4 overflow-y-auto">
              <!-- Messages will be appended here by JS -->
@@ -254,12 +266,25 @@
     <script>
         // --- Configuration ---
         // Configuration that works for both local and Vercel
-        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-            ? 'http://localhost:8000' 
+        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:8000'
             : 'https://datera-ai-suite-production.up.railway.app';
         const GATEWAY_TOKEN = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
             ? 'test_gateway_token_123'
             : 'c17e4ea45486a836e15eae268ecc5043312c96f5bec19a9fc9f1452f30b361bd';
+
+        // Debug functions
+        function toggleDebugPanel() {
+            const panel = document.getElementById('debugPanel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function updateDebugInfo(apiUrl, error = null) {
+            document.getElementById('debugApiUrl').textContent = apiUrl;
+            if (error) {
+                document.getElementById('debugLastError').textContent = error;
+            }
+        }
         
         // --- Global State ---
         let currentConversationId = 'conv1';
@@ -299,6 +324,9 @@
         document.addEventListener('DOMContentLoaded', async () => {
             await loadBotConfig();
             initializeAppData();
+            
+            // Initialize debug panel
+            updateDebugInfo(API_BASE_URL);
         });
         
         async function loadBotConfig() {
@@ -604,6 +632,20 @@
                                 }
                             } catch (e) {
                                 console.error('Error parsing chunk:', e);
+                                // Update debug info
+                                updateDebugInfo(API_BASE_URL, e.message);
+                                
+                                // Show error in UI
+                                removeTypingIndicator();
+                                showToast(`Error: ${e.message}`, 'error');
+                                
+                                // Add error message to chat
+                                messages[currentConversationId].push({
+                                    sender: 'bot',
+                                    text: `Error: ${e.message}`
+                                });
+                                displayMessages();
+                                break;
                             }
                         }
                     }
@@ -611,18 +653,18 @@
 
             } catch (error) {
                 console.error('API Error:', error);
+                // Update debug info
+                updateDebugInfo(API_BASE_URL, error.message);
+                
                 removeTypingIndicator();
-                showToast('Failed to get response from assistant', 'error');
+                showToast(`API Error: ${error.message}`, 'error');
                 
                 // Add error message
                 messages[currentConversationId].push({
                     sender: 'bot',
-                    text: 'Sorry, I encountered an error. Please try again.'
+                    text: `API Error: ${error.message}`
                 });
-                appendMessage({
-                    sender: 'bot',
-                    text: 'Sorry, I encountered an error. Please try again.'
-                });
+                displayMessages();
             } finally {
                 isStreaming = false;
                 sendMessageButton.disabled = false;
