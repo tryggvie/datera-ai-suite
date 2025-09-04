@@ -334,15 +334,65 @@
         let currentConversationId = 'conv1';
         let currentBotId = 'general';
         let bots = [];
-        let conversations = [
-            { id: 'conv1', title: 'New Conversation', botId: 'general', folderId: null, lastActivity: new Date() }
-        ];
-        let messages = {
-            'conv1': []
-        };
+        let conversations = [];
+        let messages = {};
         let folders = [];
         let stagedImage = null;
         let isStreaming = false;
+
+        // --- Data Persistence ---
+        function saveConversations() {
+            try {
+                localStorage.setItem('ai-suite-conversations', JSON.stringify(conversations));
+                localStorage.setItem('ai-suite-messages', JSON.stringify(messages));
+                localStorage.setItem('ai-suite-current-conversation', currentConversationId);
+                localStorage.setItem('ai-suite-current-bot', currentBotId);
+            } catch (e) {
+                console.error('Failed to save conversations:', e);
+            }
+        }
+
+        function loadConversations() {
+            try {
+                const savedConversations = localStorage.getItem('ai-suite-conversations');
+                const savedMessages = localStorage.getItem('ai-suite-messages');
+                const savedCurrentConv = localStorage.getItem('ai-suite-current-conversation');
+                const savedCurrentBot = localStorage.getItem('ai-suite-current-bot');
+
+                if (savedConversations) {
+                    conversations = JSON.parse(savedConversations).map(conv => ({
+                        ...conv,
+                        lastActivity: new Date(conv.lastActivity)
+                    }));
+                } else {
+                    // Initialize with default conversation
+                    conversations = [
+                        { id: 'conv1', title: 'New Conversation', botId: 'general', folderId: null, lastActivity: new Date() }
+                    ];
+                }
+
+                if (savedMessages) {
+                    messages = JSON.parse(savedMessages);
+                } else {
+                    messages = { 'conv1': [] };
+                }
+
+                if (savedCurrentConv && conversations.find(c => c.id === savedCurrentConv)) {
+                    currentConversationId = savedCurrentConv;
+                }
+
+                if (savedCurrentBot) {
+                    currentBotId = savedCurrentBot;
+                }
+            } catch (e) {
+                console.error('Failed to load conversations:', e);
+                // Fallback to defaults
+                conversations = [
+                    { id: 'conv1', title: 'New Conversation', botId: 'general', folderId: null, lastActivity: new Date() }
+                ];
+                messages = { 'conv1': [] };
+            }
+        }
 
         // --- UI Elements ---
         const botList = document.getElementById('bot-list');
@@ -366,6 +416,9 @@
 
         // --- App Initialization ---
         document.addEventListener('DOMContentLoaded', async () => {
+            // Load saved conversations first
+            loadConversations();
+            
             await loadBotConfig();
             initializeAppData();
             
@@ -505,6 +558,7 @@
             };
             conversations.push(newConv);
             messages[newConvId] = [];
+            saveConversations();
             loadConversation(newConvId);
         }
 
@@ -564,12 +618,14 @@
 
             messages[currentConversationId].push(userMessage);
             appendMessage(userMessage);
+            saveConversations();
 
             const conv = conversations.find(c => c.id === currentConversationId);
             if (conv) {
                 conv.lastActivity = new Date();
                 if(conv.title === 'New Conversation' && text) {
                     conv.title = text.substring(0, 40) + (text.length > 40 ? '...' : '');
+                    saveConversations();
                 }
             }
             
@@ -680,6 +736,7 @@
                                         sender: 'bot',
                                         text: botResponse
                                     });
+                                    saveConversations();
                                     break;
                                 }
                                 if (data.error) {
@@ -699,6 +756,7 @@
                                     sender: 'bot',
                                     text: `Error: ${e.message}`
                                 });
+                                saveConversations();
                                 displayMessages();
                                 break;
                             }
@@ -719,6 +777,7 @@
                     sender: 'bot',
                     text: `API Error: ${error.message}`
                 });
+                saveConversations();
                 displayMessages();
             } finally {
                 isStreaming = false;
@@ -798,6 +857,7 @@
                     currentBotNameDisplay.textContent = "";
                 }
             }
+            saveConversations();
             renderConversationList();
         }
         
@@ -868,6 +928,7 @@
              const currentTitle = conv.title === 'New Conversation' ? '' : conv.title;
              showInputModal("Rename Conversation", (newName) => {
                 conv.title = newName;
+                saveConversations();
                 loadConversation(convId);
              }, currentTitle);
         }
