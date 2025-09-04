@@ -160,7 +160,7 @@ async def chat(
         response_params = {
             "model": request.model,
             "input": input_data,
-            "tools": [{"type": "web_search_preview"}],  # Enable web search
+            "tools": [{"type": "web_search"}],  # Enable web search
             "text": {
                 "verbosity": request.verbosity
             },
