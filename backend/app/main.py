@@ -311,6 +311,7 @@ async def chat(
         
         # Create streaming response (simulated since Response API doesn't support streaming yet)
         async def generate_response():
+            nonlocal final_model_used
             try:
                 # Make the API call - try Response API first, fallback to Chat Completions
                 try:
