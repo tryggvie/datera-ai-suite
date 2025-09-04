@@ -258,6 +258,8 @@ async def chat(
         )
     
     try:
+        logger.info(f"Request {request_id}: Starting persona processing for bot_id: {request.bot_id}")
+        
         # Prepare input for OpenAI Response API
         if len(request.messages) == 1:
             # Single message - use as input string
@@ -265,6 +267,8 @@ async def chat(
         else:
             # Multiple messages - use as input array
             input_data = [{"role": msg.role, "content": msg.content} for msg in request.messages]
+        
+        logger.info(f"Request {request_id}: Input data prepared, length: {len(str(input_data))}")
         
         # Add format mode instruction if requested
         if request.format_mode == "brief":
@@ -312,23 +316,26 @@ async def chat(
         # Create streaming response (simulated since Response API doesn't support streaming yet)
         async def generate_response():
             nonlocal final_model_used
+            # Use the variables from the outer scope
+            current_model = model_to_use
+            current_fallback = fallback_model
             try:
                 # Make the API call - try Response API first, fallback to Chat Completions
                 try:
                     response = client.responses.create(**response_params)
                 except (AttributeError, Exception) as e:
                     # Try fallback model if primary model fails
-                    if model_to_use != fallback_model:
-                        logger.warning(f"Primary model {model_to_use} failed ({str(e)}), trying fallback model {fallback_model}")
+                    if current_model != current_fallback:
+                        logger.warning(f"Primary model {current_model} failed ({str(e)}), trying fallback model {current_fallback}")
                         try:
                             fallback_params = response_params.copy()
-                            fallback_params["model"] = fallback_model
+                            fallback_params["model"] = current_fallback
                             response = client.responses.create(**fallback_params)
-                            model_to_use = fallback_model  # Update for logging
-                            final_model_used = fallback_model  # Update final model
-                            logger.info(f"Successfully used fallback model {fallback_model}")
+                            current_model = current_fallback  # Update for logging
+                            final_model_used = current_fallback  # Update final model
+                            logger.info(f"Successfully used fallback model {current_fallback}")
                         except Exception as e2:
-                            logger.warning(f"Fallback model {fallback_model} also failed ({str(e2)}), falling back to Chat Completions")
+                            logger.warning(f"Fallback model {current_fallback} also failed ({str(e2)}), falling back to Chat Completions")
                             # Final fallback to Chat Completions
                             if isinstance(input_data, str):
                                 openai_messages = [{"role": "user", "content": input_data}]
@@ -339,7 +346,7 @@ async def chat(
                             openai_messages.insert(0, {"role": "system", "content": persona['text']})
                             
                             chat_params = {
-                                "model": fallback_model,
+                                "model": current_fallback,
                                 "messages": openai_messages
                             }
                             if temperature != 0.7:
@@ -348,11 +355,11 @@ async def chat(
                                 chat_params["max_tokens"] = max_tokens
 
                             response = client.chat.completions.create(**chat_params)
-                            model_to_use = fallback_model  # Update for logging
-                            final_model_used = fallback_model  # Update final model
+                            current_model = current_fallback  # Update for logging
+                            final_model_used = current_fallback  # Update final model
                     else:
                         # For other models, fall back to Chat Completions
-                        logger.warning(f"Response API not available for {model_to_use}, falling back to Chat Completions")
+                        logger.warning(f"Response API not available for {current_model}, falling back to Chat Completions")
                         if isinstance(input_data, str):
                             openai_messages = [{"role": "user", "content": input_data}]
                         else:
@@ -362,7 +369,7 @@ async def chat(
                         openai_messages.insert(0, {"role": "system", "content": persona['text']})
                         
                         chat_params = {
-                            "model": model_to_use,
+                            "model": current_model,
                             "messages": openai_messages
                         }
                         if temperature != 0.7:
@@ -371,7 +378,7 @@ async def chat(
                             chat_params["max_tokens"] = max_tokens
 
                         response = client.chat.completions.create(**chat_params)
-                        final_model_used = model_to_use  # Update final model
+                        final_model_used = current_model  # Update final model
                     # Convert to Response API format for consistency
                     class MockResponse:
                         def __init__(self, chat_response):
