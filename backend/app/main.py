@@ -124,8 +124,26 @@ async def chat(
         # Create streaming response (simulated since Response API doesn't support streaming yet)
         async def generate_response():
             try:
-                # Make the API call
-                response = client.responses.create(**response_params)
+                # Make the API call - try Response API first, fallback to Chat Completions
+                try:
+                    response = client.responses.create(**response_params)
+                except AttributeError:
+                    # Fallback to Chat Completions API if Response API not available
+                    logger.warning("Response API not available, falling back to Chat Completions")
+                    response = client.chat.completions.create(
+                        model=request.model,
+                        messages=openai_messages,
+                        temperature=request.temperature,
+                        max_tokens=request.max_tokens
+                    )
+                    # Convert to Response API format for consistency
+                    class MockResponse:
+                        def __init__(self, chat_response):
+                            self.output_text = chat_response.choices[0].message.content
+                            self.output = [type('obj', (object,), {'content': [type('obj', (object,), {'text': self.output_text})]})()]
+                            self.model = chat_response.model
+                            self.usage = chat_response.usage
+                    response = MockResponse(response)
                 
                 # Extract the output text
                 output_text = ""
