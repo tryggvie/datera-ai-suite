@@ -6,8 +6,10 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copy application code and persona files
 COPY app/ ./app/
+COPY config/ ./config/
+COPY prompts/ ./prompts/
 
 # Expose port
 EXPOSE 8000
