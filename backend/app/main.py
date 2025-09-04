@@ -25,6 +25,8 @@ app = FastAPI(title="AI Assistant Suite Backend", version="1.0.0")
 
 # CORS configuration
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
+# Add localhost for testing
+allowed_origins.extend(["http://localhost:3000", "http://127.0.0.1:3000"])
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[origin.strip() for origin in allowed_origins if origin.strip()],
