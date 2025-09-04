@@ -60,6 +60,10 @@ def load_personas():
                 break
         
         if not registry_path:
+            logger.error(f"Persona registry not found in any of these locations: {possible_paths}")
+            logger.error(f"Current working directory: {os.getcwd()}")
+            logger.error(f"__file__ location: {__file__}")
+            logger.error(f"Directory listing: {os.listdir('.')}")
             raise FileNotFoundError(f"Persona registry not found in any of these locations: {possible_paths}")
         with open(registry_path, 'r', encoding='utf-8') as f:
             registry = json.load(f)
