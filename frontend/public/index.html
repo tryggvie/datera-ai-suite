@@ -440,7 +440,18 @@
         }
         
         function loadConversation(convId) {
-             if (currentConversationId === convId && chatOutput.innerHTML !== '') return;
+             if (currentConversationId === convId && chatOutput.innerHTML !== '') {
+                // Even if conversation is already loaded, update the UI elements
+                const conv = conversations.find(c => c.id === convId);
+                if (conv) {
+                    currentBotId = conv.botId;
+                    const bot = bots.find(b => b.id === currentBotId);
+                    currentBotNameDisplay.textContent = bot ? bot.name : 'Unknown Bot';
+                    conversationTitleDisplay.textContent = conv.title || 'Conversation';
+                    renderConversationList();
+                }
+                return;
+             }
              currentConversationId = convId;
              const conv = conversations.find(c => c.id === convId);
              if (conv) {
