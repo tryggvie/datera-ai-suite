@@ -17,8 +17,22 @@ load_dotenv(".env.local")
 load_dotenv()  # Fallback to .env
 
 # Configure logging
-logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=getattr(logging, log_level),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('app.log')
+    ]
+)
 logger = logging.getLogger(__name__)
+
+# Log startup information
+logger.info(f"Starting AI Assistant Suite Backend - Log Level: {log_level}")
+logger.info(f"OpenAI API Key configured: {'Yes' if os.getenv('OPENAI_API_KEY') else 'No'}")
+logger.info(f"Gateway Token configured: {'Yes' if os.getenv('GATEWAY_TOKEN') else 'No'}")
+logger.info(f"Allowed Origins: {os.getenv('ALLOWED_ORIGINS', 'Not set')}")
 
 # Initialize FastAPI app
 app = FastAPI(title="AI Assistant Suite Backend", version="1.0.0")
@@ -54,6 +68,8 @@ class ChatRequest(BaseModel):
     model: str = "gpt-5"
     verbosity: str = "medium"  # low, medium, high
     reasoning_effort: str = "medium"  # minimal, medium, high
+    temperature: float = 0.7
+    max_tokens: Optional[int] = None
 
 class HealthResponse(BaseModel):
     status: str
@@ -80,6 +96,20 @@ def verify_gateway_token(request: Request):
 async def health_check():
     """Health check endpoint"""
     return HealthResponse(status="ok")
+
+@app.get("/logs")
+async def get_logs(lines: int = 50):
+    """Get recent logs for debugging"""
+    try:
+        with open('app.log', 'r') as f:
+            all_lines = f.readlines()
+            recent_lines = all_lines[-lines:] if len(all_lines) > lines else all_lines
+            return {"logs": recent_lines, "total_lines": len(all_lines)}
+    except FileNotFoundError:
+        return {"logs": ["No log file found"], "total_lines": 0}
+    except Exception as e:
+        logger.error(f"Error reading logs: {str(e)}")
+        return {"error": str(e)}
 
 @app.post("/v1/chat")
 async def chat(
@@ -130,12 +160,24 @@ async def chat(
                 except AttributeError:
                     # Fallback to Chat Completions API if Response API not available
                     logger.warning("Response API not available, falling back to Chat Completions")
-                    response = client.chat.completions.create(
-                        model=request.model,
-                        messages=openai_messages,
-                        temperature=request.temperature,
-                        max_tokens=request.max_tokens
-                    )
+                    # Convert input_data to messages format for Chat Completions
+                    if isinstance(input_data, str):
+                        openai_messages = [{"role": "user", "content": input_data}]
+                    else:
+                        openai_messages = input_data
+                    
+                    # Prepare parameters for Chat Completions
+                    chat_params = {
+                        "model": request.model,
+                        "messages": openai_messages
+                    }
+                    # Only add temperature if it's not the default (some models don't support custom temperature)
+                    if request.temperature != 0.7:
+                        chat_params["temperature"] = request.temperature
+                    if request.max_tokens and request.max_tokens > 0:
+                        chat_params["max_tokens"] = request.max_tokens
+                    
+                    response = client.chat.completions.create(**chat_params)
                     # Convert to Response API format for consistency
                     class MockResponse:
                         def __init__(self, chat_response):
@@ -172,8 +214,9 @@ async def chat(
                 yield f"data: {json.dumps({'done': True})}\n\n"
                 
             except Exception as e:
-                logger.error(f"Request {request_id}: OpenAI Response API error: {str(e)}")
-                yield f"data: {json.dumps({'error': 'Service temporarily unavailable'})}\n\n"
+                logger.error(f"Request {request_id}: OpenAI API error: {str(e)}", exc_info=True)
+                logger.error(f"Request {request_id}: Request details - Model: {request.model}, Messages: {len(request.messages)}")
+                yield f"data: {json.dumps({'error': f'Service error: {str(e)}'})}\n\n"
         
         # Log request completion
         latency = time.time() - start_time
