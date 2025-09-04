@@ -44,8 +44,23 @@ def load_personas():
     persona_cache.clear()
     
     try:
-        # Load persona registry
-        registry_path = os.path.join(os.path.dirname(__file__), "..", "config", "personas.registry.json")
+        # Load persona registry - try multiple possible paths
+        possible_paths = [
+            os.path.join(os.path.dirname(__file__), "..", "config", "personas.registry.json"),
+            os.path.join(os.getcwd(), "config", "personas.registry.json"),
+            os.path.join(os.getcwd(), "backend", "config", "personas.registry.json"),
+            "config/personas.registry.json",
+            "backend/config/personas.registry.json"
+        ]
+        
+        registry_path = None
+        for path in possible_paths:
+            if os.path.exists(path):
+                registry_path = path
+                break
+        
+        if not registry_path:
+            raise FileNotFoundError(f"Persona registry not found in any of these locations: {possible_paths}")
         with open(registry_path, 'r', encoding='utf-8') as f:
             registry = json.load(f)
         
@@ -54,8 +69,22 @@ def load_personas():
         for persona in registry['personas']:
             persona_id = persona['id']
             
-            # Load instructions file
-            instructions_path = os.path.join(os.path.dirname(__file__), "..", persona['instructions_path'])
+            # Load instructions file - try multiple possible paths
+            possible_instruction_paths = [
+                os.path.join(os.path.dirname(__file__), "..", persona['instructions_path']),
+                os.path.join(os.getcwd(), persona['instructions_path']),
+                os.path.join(os.getcwd(), "backend", persona['instructions_path']),
+                persona['instructions_path']
+            ]
+            
+            instructions_path = None
+            for path in possible_instruction_paths:
+                if os.path.exists(path):
+                    instructions_path = path
+                    break
+            
+            if not instructions_path:
+                raise FileNotFoundError(f"Instructions file not found for persona '{persona_id}' in any of these locations: {possible_instruction_paths}")
             try:
                 with open(instructions_path, 'r', encoding='utf-8') as f:
                     instructions_text = f.read()
