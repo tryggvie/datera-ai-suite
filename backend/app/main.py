@@ -148,7 +148,7 @@ async def chat(
         )
     
     try:
-        # Prepare messages for OpenAI Response API
+        # Prepare input for OpenAI Response API
         if len(request.messages) == 1:
             # Single message - use as input string
             input_data = request.messages[0].content
@@ -156,10 +156,11 @@ async def chat(
             # Multiple messages - use as input array
             input_data = [{"role": msg.role, "content": msg.content} for msg in request.messages]
         
-        # Prepare Response API parameters
+        # Prepare Response API parameters with web search tool
         response_params = {
             "model": request.model,
             "input": input_data,
+            "tools": [{"type": "web_search_preview"}],  # Enable web search
             "text": {
                 "verbosity": request.verbosity
             },
@@ -168,7 +169,7 @@ async def chat(
             }
         }
         
-        logger.info(f"Request {request_id}: Processing chat with GPT-5 Response API, verbosity: {request.verbosity}")
+        logger.info(f"Request {request_id}: Processing chat with GPT-5 Response API with web search enabled, verbosity: {request.verbosity}")
         
         # Create streaming response (simulated since Response API doesn't support streaming yet)
         async def generate_response():
@@ -185,9 +186,12 @@ async def chat(
                     else:
                         openai_messages = input_data
                     
+                    # Use a compatible model for Chat Completions (gpt-5 might not be available)
+                    fallback_model = "gpt-4o" if request.model == "gpt-5" else request.model
+                    
                     # Prepare parameters for Chat Completions
                     chat_params = {
-                        "model": request.model,
+                        "model": fallback_model,
                         "messages": openai_messages
                     }
                     # Only add temperature if it's not the default (some models don't support custom temperature)
@@ -195,7 +199,7 @@ async def chat(
                         chat_params["temperature"] = request.temperature
                     if request.max_tokens and request.max_tokens > 0:
                         chat_params["max_tokens"] = request.max_tokens
-                    
+
                     response = client.chat.completions.create(**chat_params)
                     # Convert to Response API format for consistency
                     class MockResponse:
