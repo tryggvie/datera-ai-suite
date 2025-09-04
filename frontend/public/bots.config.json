@@ -1,25 +1,25 @@
 [
   {
     "id": "general",
-    "name": "General",
+    "name": "General GPT-5",
     "description": "General-purpose assistant",
     "enabled": true
   },
   {
     "id": "research",
-    "name": "Research",
+    "name": "Birta",
     "description": "Deeper research assistant",
     "enabled": false
   },
   {
     "id": "creative",
-    "name": "Creative",
+    "name": "Blog Brief Builder",
     "description": "Creative writing and ideation",
     "enabled": false
   },
   {
     "id": "technical",
-    "name": "Technical",
+    "name": "Article Writer",
     "description": "Technical problem solving",
     "enabled": false
   }
