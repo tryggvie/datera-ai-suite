@@ -350,8 +350,7 @@ async def chat(
                             
                             chat_params = {
                                 "model": current_fallback,
-                                "messages": openai_messages,
-                                "tools": [{"type": "web_search"}]  # Enable web search for fallback
+                                "messages": openai_messages
                             }
                             chat_params["temperature"] = current_temperature
                             if current_max_tokens and current_max_tokens > 0:
@@ -371,8 +370,7 @@ async def chat(
                         
                         chat_params = {
                             "model": current_model,
-                            "messages": openai_messages,
-                            "tools": [{"type": "web_search"}]  # Enable web search for fallback
+                            "messages": openai_messages
                         }
                         chat_params["temperature"] = current_temperature
                         if current_max_tokens and current_max_tokens > 0:
