@@ -409,7 +409,7 @@
                     console.log('Using most recent conversation:', currentConversationId);
                 }
                 
-                // Always sort conversations by lastActivity for display, but keep the saved currentConversationId
+                // Always sort conversations by lastActivity for display (most recent first)
                 conversations.sort((a, b) => b.lastActivity - a.lastActivity);
                 console.log('Conversations after sorting:', conversations.map(c => ({ id: c.id, title: c.title, lastActivity: c.lastActivity })));
                 console.log('Current conversation ID:', currentConversationId);
@@ -596,46 +596,30 @@
                 return;
             }
             
-             if (currentConversationId === convId && chatOutput.innerHTML !== '') {
-                // Even if conversation is already loaded, update the UI elements
-                const conv = conversations.find(c => c.id === convId);
-                if (conv) {
-                    currentBotId = conv.botId;
-                    const bot = bots.find(b => b.id === currentBotId);
-                    currentBotNameDisplay.textContent = bot ? bot.name : 'Unknown Bot';
-                    updateModeSwitch();
-                    renderConversationList();
-                }
+            // Always load the conversation content, even if it's the current one
+            // This fixes the issue where refresh doesn't load the selected conversation
+            const conv = conversations.find(c => c.id === convId);
+            if (!conv) {
+                console.warn('Conversation not found:', convId);
                 return;
-             }
-             
-             // If conversation is already loaded but chat is empty (e.g., after refresh), render messages
-             if (currentConversationId === convId && chatOutput.innerHTML === '') {
-                const conv = conversations.find(c => c.id === convId);
-                if (conv) {
-                    currentBotId = conv.botId;
-                    const bot = bots.find(b => b.id === currentBotId);
-                    currentBotNameDisplay.textContent = bot ? bot.name : 'Unknown Bot';
-                    updateModeSwitch();
-                    renderConversationList();
-                    renderMessages();
-                }
-                return;
-             }
-             
-             // Reset response_id when switching conversations
-             lastResponseId = null;
-             
-             currentConversationId = convId;
-             const conv = conversations.find(c => c.id === convId);
-             if (conv) {
-                currentBotId = conv.botId;
-                const bot = bots.find(b => b.id === currentBotId);
-                currentBotNameDisplay.textContent = bot ? bot.name : 'Unknown Bot';
-                updateModeSwitch();
-                renderConversationList();
-                renderMessages();
-             }
+            }
+            
+            currentConversationId = convId;
+            currentBotId = conv.botId;
+            
+            // Update UI elements
+            const bot = bots.find(b => b.id === currentBotId);
+            currentBotNameDisplay.textContent = bot ? bot.name : 'Unknown Bot';
+            updateModeSwitch();
+            
+            // Always render messages for the conversation
+            renderMessages();
+            
+            // Update conversation list highlighting
+            renderConversationList();
+            
+            // Reset response_id when switching conversations
+            lastResponseId = null;
         }
         
         function startNewConversation(botId) {
@@ -647,7 +631,8 @@
                 lastActivity: new Date(),
                 folderId: null
             };
-            conversations.push(newConv);
+            // Add new conversation to the beginning of the list (most recent first)
+            conversations.unshift(newConv);
             messages[newConvId] = [];
             saveConversations();
             loadConversation(newConvId);
@@ -785,8 +770,10 @@
                 conv.lastActivity = new Date();
                 if(conv.title === 'New Conversation' && text) {
                     conv.title = text.substring(0, 40) + (text.length > 40 ? '...' : '');
-                    saveConversations();
                 }
+                // Re-sort conversations by lastActivity (most recent first)
+                conversations.sort((a, b) => b.lastActivity - a.lastActivity);
+                saveConversations();
             }
             
             loadConversation(currentConversationId);
