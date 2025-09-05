@@ -411,7 +411,9 @@
             html = html.replace(/^[\s]*[-*][\s]+(.+)$/gm, (match, content, offset, string) => {
                 // Count leading spaces to determine nesting level
                 const leadingSpaces = match.match(/^[\s]*/)[0].length;
-                const indentLevel = Math.floor(leadingSpaces / 2); // Every 2 spaces = 1 indent level
+                const indentLevel = Math.floor(leadingSpaces / 4); // Every 4 spaces = 1 indent level
+                
+                console.log(`Bullet match: "${match}" | leadingSpaces: ${leadingSpaces} | indentLevel: ${indentLevel}`);
                 
                 if (indentLevel > 0) {
                     // This is a sub-bullet
