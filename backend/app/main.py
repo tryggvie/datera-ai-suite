@@ -184,6 +184,13 @@ class HealthResponse(BaseModel):
     status: str
     api: str = "gpt-5-responses"
 
+class PasscodeRequest(BaseModel):
+    passcode: str
+
+class PasscodeResponse(BaseModel):
+    valid: bool
+    message: str
+
 # Bot configuration is now handled by persona system
 
 def verify_gateway_token(request: Request):
@@ -218,6 +225,19 @@ async def get_logs(lines: int = 50):
     except Exception as e:
         logger.error(f"Error reading logs: {str(e)}")
         return {"error": str(e)}
+
+@app.post("/api/auth/verify", response_model=PasscodeResponse)
+async def verify_passcode(request: PasscodeRequest):
+    """Verify passcode for frontend authentication"""
+    # Get the expected passcode from environment variable
+    expected_passcode = os.getenv("FRONTEND_PASSCODE", "datera2024")
+    
+    if request.passcode == expected_passcode:
+        logger.info("Passcode verification successful")
+        return PasscodeResponse(valid=True, message="Authentication successful")
+    else:
+        logger.warning(f"Invalid passcode attempt: {request.passcode[:3]}...")
+        return PasscodeResponse(valid=False, message="Invalid passcode")
 
 @app.post("/admin/reload-personas")
 async def reload_personas(token: str = Depends(verify_gateway_token)):
