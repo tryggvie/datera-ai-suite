@@ -154,7 +154,7 @@
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 flex flex-col bg-white">
+    <main class="flex-1 flex flex-col bg-white h-full">
         <!-- Main Header (Combined) -->
         <header class="h-16 flex justify-between items-center px-6 border-b border-gray-200 shrink-0">
             <!-- Left Side: Bot Info -->
@@ -200,7 +200,7 @@
         </header>
 
         <!-- Debug Panel (temporarily visible) -->
-        <div id="debugPanel" class="bg-yellow-50 border-b border-yellow-200 p-2 text-xs">
+        <div id="debugPanel" class="bg-yellow-50 border-b border-yellow-200 p-2 text-xs shrink-0">
             <div class="flex justify-between items-center">
                 <span class="font-semibold text-yellow-800">Debug Mode</span>
                 <button onclick="toggleDebugPanel()" class="text-yellow-600 hover:text-yellow-800">Hide</button>
@@ -212,7 +212,7 @@
         </div>
 
         <!-- Chat Output -->
-        <div id="chat-output" class="flex-1 p-6 space-y-4 overflow-y-auto">
+        <div id="chat-output" class="flex-1 p-6 space-y-4 overflow-y-auto min-h-0">
              <!-- Messages will be appended here by JS -->
         </div>
 
