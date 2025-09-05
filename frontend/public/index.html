@@ -287,6 +287,7 @@
             <div id="debugInfo" class="mt-1 text-yellow-700">
                 <div>API: <span id="debugApiUrl">-</span></div>
                 <div>Last Error: <span id="debugLastError">None</span></div>
+                <div>Image URL: <span id="debugImageUrl">None</span></div>
             </div>
         </div>
 
@@ -1421,6 +1422,9 @@
                     stagedImage = blob.url;
                     console.log('Image upload successful, stagedImage set to:', stagedImage);
                     
+                    // Update debug panel with image URL
+                    document.getElementById('debugImageUrl').textContent = blob.url;
+                    
                     // Switch from spinner to thumbnail
                     document.getElementById('uploading-placeholder').classList.add('hidden');
                     attachmentThumbnail.src = blob.url;
@@ -1448,6 +1452,9 @@
             attachmentPreviewContainer.classList.add('hidden');
             attachmentThumbnail.src = '';
             fileInput.value = '';
+            
+            // Clear debug image URL
+            document.getElementById('debugImageUrl').textContent = 'None';
         }
 
         function showToast(message, type = 'info') {
