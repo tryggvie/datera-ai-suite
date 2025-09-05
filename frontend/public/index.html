@@ -558,12 +558,14 @@
             try {
                 const response = await fetch('/bots.config.json');
                 bots = await response.json();
+                console.log('Loaded bots:', bots);
             } catch (error) {
                 console.error('Failed to load bot config:', error);
                 // Fallback configuration
                 bots = [
                     { id: 'general', name: 'General', description: 'General-purpose assistant', enabled: true }
                 ];
+                console.log('Using fallback bots:', bots);
             }
         }
         
@@ -583,6 +585,7 @@
         
         // --- UI Rendering & Event Listeners ---
         function renderBots() {
+            console.log('Rendering bots:', bots);
             botList.innerHTML = '';
             bots.forEach(bot => {
                 const pill = document.createElement('button');
@@ -782,6 +785,7 @@
         function updateModeSwitch() {
             // Show mode switch only for select bots (currently just general/marketing strategist)
             const botsWithModeSwitch = ['general'];
+            console.log('Updating mode switch for bot:', currentBotId, 'Should show:', botsWithModeSwitch.includes(currentBotId));
             if (botsWithModeSwitch.includes(currentBotId)) {
                 modeSwitch.classList.remove('hidden');
             } else {
