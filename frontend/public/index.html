@@ -10,7 +10,6 @@
     <meta name="bingbot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
     <link rel="canonical" href="https://ai.datera.is/">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/@vercel/blob@latest/dist/index.umd.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -329,11 +328,7 @@
         const GATEWAY_TOKEN = 'c17e4ea45486a836e15eae268ecc5043312c96f5bec19a9fc9f1452f30b361bd';
         const BLOB_READ_WRITE_TOKEN = 'vercel_blob_rw_RGIqLjcSUWQkzWiMvQkKhNKmrUA00oA70';
         
-        // Configure Vercel Blob SDK
-        // The SDK might load as a different global variable
-        console.log('Available globals:', Object.keys(window).filter(k => k.toLowerCase().includes('blob')));
-        console.log('VercelBlob object:', window.VercelBlob);
-        console.log('All window properties:', Object.keys(window).filter(k => k.includes('vercel') || k.includes('blob')));
+        // Vercel Blob configuration - using direct API calls
 
         // Debug functions
         function toggleDebugPanel() {
@@ -1310,16 +1305,23 @@
                     // Show loading state
                     showToast('Uploading image...', 'info');
                     
-                    // Upload directly to Vercel Blob
-                    // Check if Vercel Blob SDK is available
-                    if (typeof window.VercelBlob === 'undefined') {
-                        throw new Error('Vercel Blob SDK not loaded. Please refresh the page.');
+                    // Upload directly to Vercel Blob using fetch API
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    const response = await fetch(`https://api.vercel.com/v2/blob?filename=${encodeURIComponent(file.name)}&access=public&addRandomSuffix=true`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${BLOB_READ_WRITE_TOKEN}`
+                        },
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
                     }
                     
-                    const blob = await window.VercelBlob.put(file.name, file, {
-                        access: 'public',
-                        addRandomSuffix: true
-                    });
+                    const blob = await response.json();
                     
                     // Store the image URL for later use
                     stagedImage = blob.url;
