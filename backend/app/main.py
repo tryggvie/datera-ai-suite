@@ -12,7 +12,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import openai
 from dotenv import load_dotenv
-from vercel_blob import put
+import httpx
 
 # Load environment variables
 load_dotenv(".env.local")
@@ -275,14 +275,42 @@ async def upload_image(file: UploadFile = File(...)):
         file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
         unique_filename = f"images/{uuid.uuid4()}.{file_extension}"
         
-        # Upload to Vercel Blob
-        blob_response = await put(unique_filename, content, access="public")
+        # Upload to Vercel Blob using HTTP API
+        blob_token = os.getenv("BLOB_READ_WRITE_TOKEN")
+        if not blob_token:
+            logger.error("BLOB_READ_WRITE_TOKEN not found in environment variables")
+            return ImageUploadResponse(
+                success=False,
+                error="Blob storage not configured"
+            )
         
-        logger.info(f"Image uploaded successfully: {blob_response['url']}")
-        return ImageUploadResponse(
-            success=True,
-            image_url=blob_response['url']
-        )
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.vercel.com/v2/blob",
+                headers={
+                    "Authorization": f"Bearer {blob_token}",
+                    "Content-Type": file.content_type
+                },
+                data=content,
+                params={
+                    "filename": unique_filename,
+                    "access": "public"
+                }
+            )
+            
+            if response.status_code == 200:
+                blob_data = response.json()
+                logger.info(f"Image uploaded successfully: {blob_data['url']}")
+                return ImageUploadResponse(
+                    success=True,
+                    image_url=blob_data['url']
+                )
+            else:
+                logger.error(f"Vercel Blob upload failed: {response.status_code} - {response.text}")
+                return ImageUploadResponse(
+                    success=False,
+                    error=f"Upload failed: {response.status_code}"
+                )
         
     except Exception as e:
         logger.error(f"Error uploading image: {str(e)}")
