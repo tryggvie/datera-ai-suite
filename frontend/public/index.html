@@ -407,11 +407,24 @@
             html = html.replace(/^# (.+)$/gm, '<h1 class="font-semibold text-xl mb-3 mt-4">$1</h1>');
             
             // Convert bullet points (- or * at start of line)
-            html = html.replace(/^[\s]*[-*][\s]+(.+)$/gm, '<li>$1</li>');
+            // Handle both main bullets and sub-bullets
+            html = html.replace(/^[\s]*[-*][\s]+(.+)$/gm, (match, content, offset, string) => {
+                // Count leading spaces to determine nesting level
+                const leadingSpaces = match.match(/^[\s]*/)[0].length;
+                const indentLevel = Math.floor(leadingSpaces / 2); // Every 2 spaces = 1 indent level
+                
+                if (indentLevel > 0) {
+                    // This is a sub-bullet
+                    return `<li class="ml-6">${content}</li>`;
+                } else {
+                    // This is a main bullet
+                    return `<li>${content}</li>`;
+                }
+            });
             
             // Wrap consecutive <li> elements in <ul>
-            html = html.replace(/(<li>.*<\/li>)(?:\s*<br>\s*<li>.*<\/li>)*/g, (match) => {
-                const listItems = match.match(/<li>.*?<\/li>/g) || [];
+            html = html.replace(/(<li[^>]*>.*<\/li>)(?:\s*<br>\s*<li[^>]*>.*<\/li>)*/g, (match) => {
+                const listItems = match.match(/<li[^>]*>.*?<\/li>/g) || [];
                 return `<ul class="list-disc ml-4 space-y-1">${listItems.join('')}</ul>`;
             });
             
