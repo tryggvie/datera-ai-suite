@@ -424,6 +424,13 @@
                 }
             });
             
+            // Also handle bullet points that might not have been caught by the above regex
+            // Look for lines that start with spaces followed by * (for sub-bullets)
+            html = html.replace(/^(\s{4,})\*[\s]+(.+)$/gm, (match, spaces, content) => {
+                console.log(`Sub-bullet match: "${match}" | spaces: ${spaces.length}`);
+                return `<li class="ml-6">${content}</li>`;
+            });
+            
             // Wrap consecutive <li> elements in <ul>
             html = html.replace(/(<li[^>]*>.*<\/li>)(?:\s*<br>\s*<li[^>]*>.*<\/li>)*/g, (match) => {
                 const listItems = match.match(/<li[^>]*>.*?<\/li>/g) || [];
