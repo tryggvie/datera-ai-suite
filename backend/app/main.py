@@ -127,6 +127,8 @@ app = FastAPI(title="AI Assistant Suite Backend", version="1.0.0")
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
 # Add localhost for testing
 allowed_origins.extend(["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3002", "http://127.0.0.1:3002"])
+# Add production subdomain
+allowed_origins.extend(["https://ai.datera.is"])
 
 # Add Vercel pattern matching for dynamic URLs
 import re

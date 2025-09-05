@@ -131,6 +131,12 @@
   ```bash
   curl -I https://<WEB_DOMAIN>
   ```
+  
+- [ ] **DNS/TLS proof for ai.datera.is**  
+  **Evidence:**
+  ```bash
+  curl -I https://ai.datera.is
+  ```
 
 - [ ] Frontend uses `GATEWAY_URL` to call backend; **no secrets** in client bundle.  
   **Evidence:** DevTools Network → request URL, headers (no API key), and bundle search for “OPENAI”/key patterns.
