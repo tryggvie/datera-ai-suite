@@ -3,3 +3,4 @@ uvicorn[standard]==0.24.0
 openai>=1.50.0
 python-dotenv==1.0.0
 httpx==0.25.2
+vercel-blob>=0.0.1
