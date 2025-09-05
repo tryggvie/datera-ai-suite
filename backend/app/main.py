@@ -282,16 +282,13 @@ async def upload_image(file: UploadFile = File(...)):
         # Upload to Vercel Blob using httpx
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                "https://api.vercel.com/v2/blob",
+                f"https://api.vercel.com/v2/blob?filename={unique_filename}&access=public",
                 headers={
                     "Authorization": f"Bearer {blob_token}",
                     "Content-Type": file.content_type
                 },
                 data=content,
-                params={
-                    "filename": unique_filename,
-                    "access": "public"
-                }
+                timeout=30.0
             )
             
             if response.status_code == 200:
@@ -426,8 +423,9 @@ async def chat(
         if request.previous_response_id:
             response_params["previous_response_id"] = request.previous_response_id
         
-        # Add temperature if specified (Responses API doesn't support max_tokens)
-        response_params["temperature"] = temperature
+        # Add temperature if specified (but not for gpt-5 which doesn't support it)
+        if model_to_use != "gpt-5":
+            response_params["temperature"] = temperature
         
         # Create streaming response (simulated since Response API doesn't support streaming yet)
         async def generate_response():
