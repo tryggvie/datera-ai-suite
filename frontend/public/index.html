@@ -398,19 +398,17 @@
                     messages = { 'conv1': [] };
                 }
 
+                // Always sort conversations by lastActivity for display (most recent first)
+                conversations.sort((a, b) => b.lastActivity - a.lastActivity);
+                
                 if (savedCurrentConv && conversations.find(c => c.id === savedCurrentConv)) {
                     currentConversationId = savedCurrentConv;
                     console.log('Restored saved conversation:', currentConversationId);
                 } else if (conversations.length > 0) {
-                    // Sort conversations by lastActivity to get the most recent
-                    conversations.sort((a, b) => b.lastActivity - a.lastActivity);
                     // If no saved conversation or saved conversation doesn't exist, use the most recent
                     currentConversationId = conversations[0].id;
                     console.log('Using most recent conversation:', currentConversationId);
                 }
-                
-                // Always sort conversations by lastActivity for display (most recent first)
-                conversations.sort((a, b) => b.lastActivity - a.lastActivity);
                 console.log('Conversations after sorting:', conversations.map(c => ({ id: c.id, title: c.title, lastActivity: c.lastActivity })));
                 console.log('Current conversation ID:', currentConversationId);
 
@@ -617,6 +615,9 @@
             
             // Update conversation list highlighting
             renderConversationList();
+            
+            // Save the current conversation selection to localStorage
+            saveConversations();
             
             // Reset response_id when switching conversations
             lastResponseId = null;
