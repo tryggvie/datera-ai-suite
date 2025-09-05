@@ -1074,6 +1074,7 @@
         }
 
         async function sendToAPI(text, imageUrl = null) {
+            console.log('sendToAPI called with:', { text, imageUrl });
             isStreaming = true;
             sendMessageButton.disabled = true;
             
@@ -1099,6 +1100,8 @@
                 if (imageUrl) {
                     requestBody.image_url = imageUrl;
                 }
+                
+                console.log('Sending request body:', requestBody);
                 
                 const response = await fetch(`${API_BASE_URL}/v1/chat`, {
                     method: 'POST',
