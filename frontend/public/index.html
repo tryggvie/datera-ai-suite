@@ -1054,14 +1054,14 @@
             // Show typing indicator
             showTypingIndicator();
             
-            // Send to API with image URL
-            console.log('About to call sendToAPI with stagedImage:', stagedImage);
-            await sendToAPI(text, stagedImage);
-            
-            // Hide the thumbnail after sending, but keep the URL for follow-up questions
+            // Hide the thumbnail immediately when user sends message
             if (stagedImage) {
                 attachmentPreviewContainer.classList.add('hidden');
             }
+            
+            // Send to API with image URL
+            console.log('About to call sendToAPI with stagedImage:', stagedImage);
+            await sendToAPI(text, stagedImage);
             
             // Don't clear staged image - keep it for follow-up questions in this conversation
             // Only clear when starting a new conversation
