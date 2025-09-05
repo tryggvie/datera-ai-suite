@@ -281,16 +281,18 @@ async def upload_image(file: UploadFile = File(...)):
         
         # Upload to Vercel Blob using httpx
         # Use the correct Vercel Blob API endpoint based on the documentation
-        # The API expects the filename in the URL path, not as a parameter
+        # The API expects a POST request to the blob endpoint with proper headers
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"https://api.vercel.com/v2/blob/{unique_filename}",
+                "https://api.vercel.com/v2/blob",
                 headers={
                     "Authorization": f"Bearer {blob_token}",
-                    "Content-Type": file.content_type
+                    "Content-Type": file.content_type,
+                    "x-vercel-protection-bypass": blob_token
                 },
                 data=content,
                 params={
+                    "filename": unique_filename,
                     "access": "public"
                 },
                 timeout=30.0
