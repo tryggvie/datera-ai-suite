@@ -311,10 +311,8 @@ async def chat(
         if request.previous_response_id:
             response_params["previous_response_id"] = request.previous_response_id
         
-        # Add temperature and max_tokens if specified
+        # Add temperature if specified (Responses API doesn't support max_tokens)
         response_params["temperature"] = temperature
-        if max_tokens and max_tokens > 0:
-            response_params["max_tokens"] = max_tokens
         
         # Create streaming response (simulated since Response API doesn't support streaming yet)
         async def generate_response():
