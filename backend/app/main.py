@@ -6,12 +6,13 @@ import logging
 import asyncio
 import hashlib
 from typing import List, Dict, Any, Optional
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import openai
 from dotenv import load_dotenv
+from vercel_blob import put
 
 # Load environment variables
 load_dotenv(".env.local")
@@ -179,6 +180,7 @@ class ChatRequest(BaseModel):
     max_tokens: Optional[int] = None
     format_mode: Optional[str] = None  # "brief" for concise responses
     previous_response_id: Optional[str] = None  # For Responses API conversation state
+    image_url: Optional[str] = None  # Optional image URL for vision processing
 
 class HealthResponse(BaseModel):
     status: str
@@ -190,6 +192,11 @@ class PasscodeRequest(BaseModel):
 class PasscodeResponse(BaseModel):
     valid: bool
     message: str
+
+class ImageUploadResponse(BaseModel):
+    success: bool
+    image_url: Optional[str] = None
+    error: Optional[str] = None
 
 # Bot configuration is now handled by persona system
 
@@ -239,6 +246,51 @@ async def verify_passcode(request: PasscodeRequest):
         logger.warning(f"Invalid passcode attempt: {request.passcode[:3]}...")
         return PasscodeResponse(valid=False, message="Invalid passcode")
 
+@app.post("/api/upload-image", response_model=ImageUploadResponse)
+async def upload_image(file: UploadFile = File(...)):
+    """Upload image to Vercel Blob storage"""
+    try:
+        # Validate file type
+        allowed_types = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"]
+        if file.content_type not in allowed_types:
+            logger.warning(f"Invalid file type uploaded: {file.content_type}")
+            return ImageUploadResponse(
+                success=False, 
+                error=f"Invalid file type. Allowed types: {', '.join(allowed_types)}"
+            )
+        
+        # Validate file size (50MB limit)
+        file_size = 0
+        content = await file.read()
+        file_size = len(content)
+        
+        if file_size > 50 * 1024 * 1024:  # 50MB
+            logger.warning(f"File too large: {file_size} bytes")
+            return ImageUploadResponse(
+                success=False,
+                error="File too large. Maximum size is 50MB."
+            )
+        
+        # Generate unique filename
+        file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
+        unique_filename = f"images/{uuid.uuid4()}.{file_extension}"
+        
+        # Upload to Vercel Blob
+        blob_response = await put(unique_filename, content, access="public")
+        
+        logger.info(f"Image uploaded successfully: {blob_response['url']}")
+        return ImageUploadResponse(
+            success=True,
+            image_url=blob_response['url']
+        )
+        
+    except Exception as e:
+        logger.error(f"Error uploading image: {str(e)}")
+        return ImageUploadResponse(
+            success=False,
+            error=f"Upload failed: {str(e)}"
+        )
+
 @app.post("/admin/reload-personas")
 async def reload_personas(token: str = Depends(verify_gateway_token)):
     """Hot-reload personas from registry and instructions files"""
@@ -286,9 +338,23 @@ async def chat(
         # Prepare input for OpenAI Response API
         # For Responses API, we only use the latest user message as input
         # Conversation context is handled via previous_response_id
-        input_data = request.messages[-1].content if request.messages else ""
+        user_message = request.messages[-1].content if request.messages else ""
         
-        logger.info(f"Request {request_id}: Input data prepared, length: {len(str(input_data))}")
+        # Prepare input data - handle both text and image
+        if request.image_url:
+            # If image is present, structure input as multimodal content
+            input_data = [{
+                "role": "user",
+                "content": [
+                    {"type": "input_text", "text": user_message},
+                    {"type": "input_image", "image_url": request.image_url}
+                ]
+            }]
+            logger.info(f"Request {request_id}: Input data prepared with image, text length: {len(user_message)}")
+        else:
+            # Text-only input
+            input_data = user_message
+            logger.info(f"Request {request_id}: Input data prepared, length: {len(str(input_data))}")
         
         # Add format mode instruction if requested
         if request.format_mode == "brief":
