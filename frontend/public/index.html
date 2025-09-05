@@ -406,6 +406,9 @@
             html = html.replace(/^## (.+)$/gm, '<h2 class="font-semibold text-lg mb-2 mt-4">$1</h2>');
             html = html.replace(/^# (.+)$/gm, '<h1 class="font-semibold text-xl mb-3 mt-4">$1</h1>');
             
+            // Convert bold text **text** to <strong> FIRST (before bullet processing)
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>');
+            
             // Convert bullet points (- or * at start of line)
             // Handle both main bullets and sub-bullets
             html = html.replace(/^[\s]*[-*][\s]+(.+)$/gm, (match, content, offset, string) => {
@@ -436,9 +439,6 @@
                 const listItems = match.match(/<li[^>]*>.*?<\/li>/g) || [];
                 return `<ul class="list-disc ml-4 space-y-1">${listItems.join('')}</ul>`;
             });
-            
-            // Convert bold text **text** to <strong>
-            html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>');
             
             // Convert italic text *text* to <em>
             html = html.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em class="italic">$1</em>');
