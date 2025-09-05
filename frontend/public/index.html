@@ -944,8 +944,8 @@
                 const bubble = document.createElement('div');
                 bubble.className = 'max-w-xl p-3 rounded-lg chat-bubble-user';
                 
-                // Only show image in the first message that contains an image
-                if (imageUrl && isFirstImageMessage(msg)) {
+                // Always show image in user messages if present
+                if (imageUrl) {
                     const img = document.createElement('img');
                     img.src = imageUrl;
                     img.className = 'rounded-md mb-2 max-w-xs';
@@ -1476,6 +1476,9 @@
                     document.getElementById('uploading-placeholder').classList.add('hidden');
                     attachmentThumbnail.src = blob.url;
                     document.getElementById('attachment-thumbnail').classList.remove('hidden');
+                    
+                    // Clear file input to allow re-uploading same file
+                    fileInput.value = '';
                     
                 } catch (error) {
                     console.error('Error uploading image:', error);

@@ -308,7 +308,10 @@ async def chat(
         
         if images_to_process:
             # If images are present, structure input as multimodal content
-            content = [{"type": "input_text", "text": user_message}]
+            # Create a prompt that explicitly asks the bot to analyze all images
+            image_prompt = f"I have provided {len(images_to_process)} image(s) for you to analyze. Please examine all of them and respond to my question: {user_message}"
+            
+            content = [{"type": "input_text", "text": image_prompt}]
             
             # Add all images to the content
             for image_url in images_to_process:
