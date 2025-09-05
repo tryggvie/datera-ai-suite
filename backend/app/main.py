@@ -305,6 +305,8 @@ async def chat(
                 ]
             }]
             logger.info(f"Request {request_id}: Input data prepared with image, text length: {len(user_message)}")
+            logger.info(f"Request {request_id}: Image URL: {request.image_url}")
+            logger.info(f"Request {request_id}: Full input data: {input_data}")
         else:
             # Text-only input
             input_data = user_message
@@ -377,6 +379,7 @@ async def chat(
             current_max_tokens = max_tokens
             try:
                 # Make the API call - try Response API with primary model first
+                logger.info(f"Request {request_id}: About to call OpenAI with params: {response_params}")
                 try:
                     response = client.responses.create(**response_params)
                     final_model_used = current_model
