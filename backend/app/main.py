@@ -294,43 +294,49 @@ async def chat(
         logger.info(f"Request {request_id}: Starting persona processing for bot_id: {request.bot_id}")
         
         # Prepare input for OpenAI Response API
-        # For Responses API, we only use the latest user message as input
-        # Conversation context is handled via previous_response_id
-        user_message = request.messages[-1].content if request.messages else ""
+        # For Responses API, we need to modify the latest user message to include images
+        # and pass the full conversation context
         
-        # Prepare input data - handle both text and images
-        # Prioritize image_urls array over single image_url for backward compatibility
-        images_to_process = []
-        if request.image_urls and len(request.image_urls) > 0:
-            images_to_process = request.image_urls
-        elif request.image_url:
-            images_to_process = [request.image_url]
-        
-        if images_to_process:
-            # If images are present, structure input as multimodal content
-            # Create a prompt that explicitly asks the bot to analyze all images
-            if len(images_to_process) == 1:
-                image_prompt = f"I have provided 1 image for you to analyze. Please examine it and respond to my question: {user_message}"
-            else:
-                image_prompt = f"I have provided {len(images_to_process)} images for you to analyze. Please examine ALL of them and respond to my question: {user_message}. When referring to specific images, please number them (e.g., 'In the first image...', 'In the second image...', etc.)."
-            
-            content = [{"type": "input_text", "text": image_prompt}]
-            
-            # Add all images to the content
-            for image_url in images_to_process:
-                content.append({"type": "input_image", "image_url": image_url})
-            
-            input_data = [{
-                "role": "user",
-                "content": content
-            }]
-            logger.info(f"Request {request_id}: Input data prepared with {len(images_to_process)} images, text length: {len(user_message)}")
-            logger.info(f"Request {request_id}: Image URLs: {images_to_process}")
-            logger.info(f"Request {request_id}: Full input data: {input_data}")
+        # Get the latest user message
+        latest_message = request.messages[-1] if request.messages else None
+        if not latest_message:
+            input_data = ""
         else:
-            # Text-only input
-            input_data = user_message
-            logger.info(f"Request {request_id}: Input data prepared, length: {len(str(input_data))}")
+            # Start with the conversation messages
+            input_data = request.messages.copy()
+            
+            # If we have images, modify the latest user message to include them
+            images_to_process = []
+            if request.image_urls and len(request.image_urls) > 0:
+                images_to_process = request.image_urls
+            elif request.image_url:
+                images_to_process = [request.image_url]
+            
+            if images_to_process:
+                # Create multimodal content for the latest user message
+                if len(images_to_process) == 1:
+                    image_prompt = f"I have provided 1 image for you to analyze. Please examine it and respond to my question: {latest_message.content}"
+                else:
+                    image_prompt = f"I have provided {len(images_to_process)} images for you to analyze. Please examine ALL of them and respond to my question: {latest_message.content}. When referring to specific images, please number them (e.g., 'In the first image...', 'In the second image...', etc.)."
+                
+                content = [{"type": "input_text", "text": image_prompt}]
+                
+                # Add all images to the content
+                for image_url in images_to_process:
+                    content.append({"type": "input_image", "image_url": image_url})
+                
+                # Replace the latest message with multimodal content
+                input_data[-1] = {
+                    "role": "user",
+                    "content": content
+                }
+                
+                logger.info(f"Request {request_id}: Input data prepared with {len(images_to_process)} images, text length: {len(latest_message.content)}")
+                logger.info(f"Request {request_id}: Image URLs: {images_to_process}")
+                logger.info(f"Request {request_id}: Full input data: {input_data}")
+            else:
+                # Text-only input
+                logger.info(f"Request {request_id}: Input data prepared, length: {len(str(input_data))}")
         
         # Add format mode instruction if requested
         if request.format_mode == "brief":
