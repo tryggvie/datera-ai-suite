@@ -366,6 +366,7 @@
         
         function checkAuth() {
             const savedAuth = localStorage.getItem('ai-suite-auth');
+            console.log('Checking auth - saved:', savedAuth, 'expected:', AUTH_PASSCODE, 'match:', savedAuth === AUTH_PASSCODE);
             return savedAuth === AUTH_PASSCODE;
         }
         
@@ -538,11 +539,16 @@
 
         // --- App Initialization ---
         document.addEventListener('DOMContentLoaded', async () => {
+            console.log('DOM loaded, starting initialization...');
+            
             // Check for authentication first
             if (!checkAuth()) {
+                console.log('Auth failed, showing auth form');
                 showAuthForm();
                 return;
             }
+            
+            console.log('Auth passed, loading app...');
             
             // Load saved conversations first
             loadConversations();
@@ -552,6 +558,8 @@
             
             // Initialize debug panel
             updateDebugInfo(API_BASE_URL);
+            
+            console.log('App initialization complete');
         });
         
         async function loadBotConfig() {
