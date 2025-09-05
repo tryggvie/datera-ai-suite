@@ -1044,6 +1044,7 @@
             showTypingIndicator();
             
             // Send to API with image URL
+            console.log('About to call sendToAPI with stagedImage:', stagedImage);
             await sendToAPI(text, stagedImage);
         }
 
@@ -1421,6 +1422,7 @@
                     // Store the image URL for later use
                     stagedImage = blob.url;
                     console.log('Image upload successful, stagedImage set to:', stagedImage);
+                    console.log('stagedImage variable after assignment:', stagedImage);
                     
                     // Update debug panel with image URL
                     document.getElementById('debugImageUrl').textContent = blob.url;
