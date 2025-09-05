@@ -1,3 +1,8 @@
 {
-  "version": 2
+  "version": 2,
+  "functions": {
+    "api/upload-image/index.js": {
+      "maxDuration": 30
+    }
+  }
 }
