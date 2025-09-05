@@ -768,6 +768,9 @@
                 userMessage.imageUrl = stagedImage;
             }
 
+            if (!messages[currentConversationId]) {
+                messages[currentConversationId] = [];
+            }
             messages[currentConversationId].push(userMessage);
             appendMessage(userMessage);
             saveConversations();
@@ -895,6 +898,9 @@
                                 }
                                 if (data.done) {
                                     // Add to messages
+                                    if (!messages[currentConversationId]) {
+                                        messages[currentConversationId] = [];
+                                    }
                                     messages[currentConversationId].push({
                                         sender: 'bot',
                                         text: botResponse
@@ -915,6 +921,9 @@
                                 showToast(`Error: ${e.message}`, 'error');
                                 
                                 // Add error message to chat
+                                if (!messages[currentConversationId]) {
+                                    messages[currentConversationId] = [];
+                                }
                                 messages[currentConversationId].push({
                                     sender: 'bot',
                                     text: `Error: ${e.message}`
@@ -936,6 +945,9 @@
                 showToast(`API Error: ${error.message}`, 'error');
                 
                 // Add error message
+                if (!messages[currentConversationId]) {
+                    messages[currentConversationId] = [];
+                }
                 messages[currentConversationId].push({
                     sender: 'bot',
                     text: `API Error: ${error.message}`
