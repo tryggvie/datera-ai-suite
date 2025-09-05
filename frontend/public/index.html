@@ -409,29 +409,17 @@
             // Convert bold text **text** to <strong> FIRST (before bullet processing)
             html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>');
             
-            // Convert bullet points (- or * at start of line)
-            // Handle both main bullets and sub-bullets
-            html = html.replace(/^[\s]*[-*][\s]+(.+)$/gm, (match, content, offset, string) => {
-                // Count leading spaces to determine nesting level
-                const leadingSpaces = match.match(/^[\s]*/)[0].length;
-                const indentLevel = Math.floor(leadingSpaces / 4); // Every 4 spaces = 1 indent level
-                
-                console.log(`Bullet match: "${match}" | leadingSpaces: ${leadingSpaces} | indentLevel: ${indentLevel}`);
-                
-                if (indentLevel > 0) {
-                    // This is a sub-bullet
-                    return `<li class="ml-6">${content}</li>`;
-                } else {
-                    // This is a main bullet
-                    return `<li>${content}</li>`;
-                }
+            // Convert bullet points using standardized markup
+            // Main bullets: - (single dash)
+            // Sub-bullets: -- (double dash)
+            html = html.replace(/^[\s]*--[\s]+(.+)$/gm, (match, content) => {
+                console.log(`Sub-bullet match: "${match}"`);
+                return `<li class="ml-6">${content}</li>`;
             });
             
-            // Also handle bullet points that might not have been caught by the above regex
-            // Look for lines that start with spaces followed by * (for sub-bullets)
-            html = html.replace(/^(\s{4,})\*[\s]+(.+)$/gm, (match, spaces, content) => {
-                console.log(`Sub-bullet match: "${match}" | spaces: ${spaces.length}`);
-                return `<li class="ml-6">${content}</li>`;
+            html = html.replace(/^[\s]*-[\s]+(.+)$/gm, (match, content) => {
+                console.log(`Main bullet match: "${match}"`);
+                return `<li>${content}</li>`;
             });
             
             // Wrap consecutive <li> elements in <ul>
