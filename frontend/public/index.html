@@ -362,37 +362,27 @@
         let lastResponseId = null; // Store response_id for conversation state
 
         // --- Passcode Authentication ---
-        async function checkAuth() {
-            const savedAuth = localStorage.getItem('ai-suite-auth');
+        function checkAuth() {
+            const savedAuth = sessionStorage.getItem('ai-suite-auth');
+            console.log('checkAuth - savedAuth:', savedAuth, 'returning:', savedAuth === 'authenticated');
             return savedAuth === 'authenticated';
         }
         
-        async function verifyPasscode(passcode) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ passcode: passcode })
-                });
-                
-                const result = await response.json();
-                return result.valid;
-            } catch (error) {
-                console.error('Passcode verification failed:', error);
-                return false;
-            }
-        }
-        
         function showLoginForm() {
-            // Hide the main app
-            document.querySelector('.min-h-screen').style.display = 'none';
+            // Hide the entire app (sidebar and main content)
+            const sidebar = document.querySelector('aside');
+            const mainContent = document.querySelector('main');
+            if (sidebar) {
+                sidebar.style.display = 'none';
+            }
+            if (mainContent) {
+                mainContent.style.display = 'none';
+            }
             
             // Create and show login form
             const loginHTML = `
-                <div id="login-container" class="min-h-screen bg-gray-50 flex items-center justify-center">
-                    <div class="max-w-md w-full space-y-8">
+                <div id="login-container" class="fixed inset-0 bg-gray-50 flex items-center justify-center z-50">
+                    <div class="max-w-md w-full space-y-8 px-4">
                         <div>
                             <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
                                 AI Assistants Suite
@@ -416,7 +406,10 @@
                             <div>
                                 <button 
                                     type="submit" 
-                                    class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                    class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-black focus:outline-none focus:ring-2 focus:ring-offset-2"
+                                    style="background-color: #00FFC7;"
+                                    onmouseover="this.style.backgroundColor='#00E6B3'"
+                                    onmouseout="this.style.backgroundColor='#00FFC7'"
                                 >
                                     Login
                                 </button>
@@ -436,37 +429,29 @@
             const passcode = document.getElementById('passcode-input').value;
             const errorDiv = document.getElementById('login-error');
             
-            // Show loading state
-            const submitButton = e.target.querySelector('button[type="submit"]');
-            const originalText = submitButton.textContent;
-            submitButton.textContent = 'Verifying...';
-            submitButton.disabled = true;
-            
-            try {
-                const isValid = await verifyPasscode(passcode);
+            // Simple passcode check (for testing)
+            if (passcode === 'datera2024') {
+                sessionStorage.setItem('ai-suite-auth', 'authenticated');
+                document.getElementById('login-container').remove();
                 
-                if (isValid) {
-                    localStorage.setItem('ai-suite-auth', 'authenticated');
-                    document.getElementById('login-container').remove();
-                    document.querySelector('.min-h-screen').style.display = 'block';
-                    
-                    // Re-initialize the app
-                    loadConversations();
-                    await loadBotConfig();
-                    initializeAppData();
-                    updateDebugInfo(API_BASE_URL);
-                } else {
-                    errorDiv.classList.remove('hidden');
-                    document.getElementById('passcode-input').value = '';
+                // Show the entire app back (sidebar and main content)
+                const sidebar = document.querySelector('aside');
+                const mainContent = document.querySelector('main');
+                if (sidebar) {
+                    sidebar.style.display = 'block';
                 }
-            } catch (error) {
-                console.error('Login error:', error);
-                errorDiv.textContent = 'Login failed. Please try again.';
+                if (mainContent) {
+                    mainContent.style.display = 'block';
+                }
+                
+                // Re-initialize the app properly
+                loadConversations();
+                await loadBotConfig();
+                initializeAppData();
+                updateDebugInfo(API_BASE_URL);
+            } else {
                 errorDiv.classList.remove('hidden');
-            } finally {
-                // Reset button state
-                submitButton.textContent = originalText;
-                submitButton.disabled = false;
+                document.getElementById('passcode-input').value = '';
             }
         }
 
@@ -582,7 +567,7 @@
             console.log('DOM loaded, starting initialization...');
             
             // Check for authentication first
-            if (!(await checkAuth())) {
+            if (!checkAuth()) {
                 console.log('Not authenticated, showing login form');
                 showLoginForm();
                 return;
@@ -1102,7 +1087,11 @@
         sendMessageButton.addEventListener('click', sendMessage);
 
         userMenuButton.addEventListener('click', () => userMenu.classList.toggle('hidden'));
-        logoutButton.addEventListener('click', () => showToast('Login/logout is not available yet', 'info'));
+        logoutButton.addEventListener('click', () => {
+            // Clear session storage and refresh to go back to login screen
+            sessionStorage.removeItem('ai-suite-auth');
+            window.location.reload();
+        });
         
         document.addEventListener('click', (e) => {
             if (!userMenuButton.contains(e.target) && !userMenu.contains(e.target)) {
