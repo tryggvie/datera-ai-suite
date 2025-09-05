@@ -412,7 +412,7 @@
             document.getElementById('login-form').addEventListener('submit', handleLogin);
         }
         
-        function handleLogin(e) {
+        async function handleLogin(e) {
             e.preventDefault();
             const passcode = document.getElementById('passcode-input').value;
             const errorDiv = document.getElementById('login-error');
@@ -424,10 +424,9 @@
                 
                 // Re-initialize the app
                 loadConversations();
-                loadBotConfig().then(() => {
-                    initializeAppData();
-                    updateDebugInfo(API_BASE_URL);
-                });
+                await loadBotConfig();
+                initializeAppData();
+                updateDebugInfo(API_BASE_URL);
             } else {
                 errorDiv.classList.remove('hidden');
                 document.getElementById('passcode-input').value = '';
