@@ -1003,6 +1003,7 @@
 
         async function sendMessage() {
             const text = messageInput.value.trim();
+            console.log('sendMessage called - text:', text, 'stagedImage:', stagedImage);
             if ((!text && !stagedImage) || !currentConversationId || isStreaming) return;
 
             const userMessage = {
@@ -1012,6 +1013,7 @@
             
             if (stagedImage) {
                 userMessage.imageUrl = stagedImage;
+                console.log('Added imageUrl to userMessage:', stagedImage);
             }
 
             if (!messages[currentConversationId]) {
@@ -1417,6 +1419,7 @@
                     
                     // Store the image URL for later use
                     stagedImage = blob.url;
+                    console.log('Image upload successful, stagedImage set to:', stagedImage);
                     
                     // Switch from spinner to thumbnail
                     document.getElementById('uploading-placeholder').classList.add('hidden');
