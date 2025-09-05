@@ -642,9 +642,9 @@
              const imageUrl = msg.imageUrl;
 
              if (sender === 'user') {
-                // User messages in bubbles (right-aligned)
+                // User messages in bubbles (right-aligned, constrained width like ChatGPT)
                 const wrapper = document.createElement('div');
-                wrapper.className = 'flex mb-4 justify-end';
+                wrapper.className = 'flex mb-4 justify-end max-w-4xl mx-auto px-4';
                 
                 const bubble = document.createElement('div');
                 bubble.className = 'max-w-xl p-3 rounded-lg chat-bubble-user';
@@ -665,9 +665,9 @@
                 wrapper.appendChild(bubble);
                 chatOutput.appendChild(wrapper);
              } else {
-                // Bot messages flow freely (no bubble, full width)
+                // Bot messages flow freely (no bubble, constrained width like ChatGPT)
                 const wrapper = document.createElement('div');
-                wrapper.className = 'mb-6 w-full';
+                wrapper.className = 'mb-6 w-full max-w-4xl mx-auto px-4';
                 
                 if (imageUrl) {
                     const img = document.createElement('img');
@@ -838,9 +838,9 @@
                 // Remove typing indicator
                 removeTypingIndicator();
 
-                // Create bot message container (flowing style, no bubble)
+                // Create bot message container (flowing style, no bubble, constrained width like ChatGPT)
                 const wrapper = document.createElement('div');
-                wrapper.className = 'mb-6 w-full';
+                wrapper.className = 'mb-6 w-full max-w-4xl mx-auto px-4';
                 wrapper.id = 'bot-response';
                 
                 const textDiv = document.createElement('div');
