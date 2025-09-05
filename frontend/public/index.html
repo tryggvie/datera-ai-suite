@@ -404,10 +404,16 @@
 
                 if (savedCurrentConv && conversations.find(c => c.id === savedCurrentConv)) {
                     currentConversationId = savedCurrentConv;
+                } else if (conversations.length > 0) {
+                    // If no saved conversation or saved conversation doesn't exist, use the first available
+                    currentConversationId = conversations[0].id;
                 }
 
                 if (savedCurrentBot) {
                     currentBotId = savedCurrentBot;
+                } else if (conversations.length > 0) {
+                    // If no saved bot, use the bot from the first conversation
+                    currentBotId = conversations[0].botId;
                 }
                 
                 // Load saved mode
@@ -487,7 +493,15 @@
         function initializeAppData() {
             renderBots();
             initializeModeSwitch();
-            loadConversation(currentConversationId);
+            
+            // Ensure we have a valid conversation ID before loading
+            if (currentConversationId && conversations.find(c => c.id === currentConversationId)) {
+                loadConversation(currentConversationId);
+            } else if (conversations.length > 0) {
+                // Fallback to first conversation if current one is invalid
+                currentConversationId = conversations[0].id;
+                loadConversation(currentConversationId);
+            }
         }
         
         // --- UI Rendering & Event Listeners ---
@@ -569,6 +583,12 @@
         }
         
         function loadConversation(convId) {
+            // If no conversation ID provided, don't proceed
+            if (!convId) {
+                console.warn('loadConversation called with no conversation ID');
+                return;
+            }
+            
              if (currentConversationId === convId && chatOutput.innerHTML !== '') {
                 // Even if conversation is already loaded, update the UI elements
                 const conv = conversations.find(c => c.id === convId);
