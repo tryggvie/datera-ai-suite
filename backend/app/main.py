@@ -271,6 +271,7 @@ async def chat(
     
     # Debug: Log the incoming request
     logger.info(f"Request {request_id}: Received request - bot_id: {request.bot_id}, image_url: {request.image_url}, image_urls: {request.image_urls}, messages count: {len(request.messages) if request.messages else 0}")
+    logger.info(f"Request {request_id}: Raw incoming request body: {request.dict()}")
     
     # Validate bot_id and get persona
     if request.bot_id not in persona_cache:
@@ -407,6 +408,7 @@ async def chat(
             try:
                 # Make the API call - try Response API with primary model first
                 logger.info(f"Request {request_id}: About to call OpenAI with params: {response_params}")
+                logger.info(f"Request {request_id}: Full input data being sent to OpenAI: {input_data}")
                 try:
                     response = client.responses.create(**response_params)
                     final_model_used = current_model
@@ -454,6 +456,7 @@ async def chat(
                         elif hasattr(item, "summary") and item.summary:
                             reasoning_summary = item.summary[0].text if item.summary else None
                     logger.info(f"Request {request_id}: Raw response text (Response API): {output_text[:200]}...")
+                    logger.info(f"Request {request_id}: Full raw response from OpenAI: {response}")
                 else:
                     logger.error(f"Request {request_id}: No valid output found in response")
                     output_text = "Sorry, I couldn't generate a response. Please try again."
@@ -476,6 +479,7 @@ async def chat(
                     'model': final_model_used,
                     'instructions_sha256': persona['sha256']
                 }
+                logger.info(f"Request {request_id}: Sending response back to frontend - output_text length: {len(output_text)}, metadata: {metadata}")
                 
                 # Extract response_id from Responses API for conversation state
                 response_id = None
