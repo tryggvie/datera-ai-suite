@@ -301,7 +301,12 @@
             <!-- Image Attachment Preview -->
             <div id="attachment-preview-container" class="hidden mb-2">
                 <div class="relative inline-block">
-                    <img id="attachment-thumbnail" class="h-20 w-auto rounded-md" src="">
+                    <!-- Uploading placeholder with spinner -->
+                    <div id="uploading-placeholder" class="h-20 w-32 bg-gray-100 border-2 border-dashed border-gray-300 rounded-md flex items-center justify-center">
+                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-600"></div>
+                    </div>
+                    <!-- Actual thumbnail (hidden during upload) -->
+                    <img id="attachment-thumbnail" class="h-20 w-auto rounded-md hidden" src="">
                     <button id="remove-attachment-button" class="absolute -top-2 -right-2 bg-gray-700 text-white rounded-full p-0.5 hover:bg-red-500">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     </button>
@@ -1381,8 +1386,10 @@
                 }
                 
                 try {
-                    // Show loading state
-                    showToast('Uploading image...', 'info');
+                    // Show uploading placeholder with spinner
+                    attachmentPreviewContainer.classList.remove('hidden');
+                    document.getElementById('uploading-placeholder').classList.remove('hidden');
+                    document.getElementById('attachment-thumbnail').classList.add('hidden');
                     
                     // Upload via Vercel serverless function
                     const response = await fetch('/api/upload-image', {
@@ -1403,13 +1410,22 @@
                     
                     // Store the image URL for later use
                     stagedImage = blob.url;
+                    
+                    // Switch from spinner to thumbnail
+                    document.getElementById('uploading-placeholder').classList.add('hidden');
                     attachmentThumbnail.src = blob.url;
-                    attachmentPreviewContainer.classList.remove('hidden');
+                    document.getElementById('attachment-thumbnail').classList.remove('hidden');
+                    
                     showToast('Image uploaded successfully!', 'success');
                     
                 } catch (error) {
                     console.error('Error uploading image:', error);
                     showToast('Failed to upload image. Please try again.', 'error');
+                    
+                    // Hide the uploading placeholder on error
+                    attachmentPreviewContainer.classList.add('hidden');
+                    document.getElementById('uploading-placeholder').classList.add('hidden');
+                    document.getElementById('attachment-thumbnail').classList.add('hidden');
                 }
             } else {
                 showToast('Please select a valid image file (JPEG, PNG, WEBP, or GIF).', 'error');
