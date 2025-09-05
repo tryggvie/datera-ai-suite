@@ -404,12 +404,19 @@
 
                 if (savedCurrentConv && conversations.find(c => c.id === savedCurrentConv)) {
                     currentConversationId = savedCurrentConv;
+                    console.log('Restored saved conversation:', currentConversationId);
                 } else if (conversations.length > 0) {
                     // Sort conversations by lastActivity to get the most recent
                     conversations.sort((a, b) => b.lastActivity - a.lastActivity);
                     // If no saved conversation or saved conversation doesn't exist, use the most recent
                     currentConversationId = conversations[0].id;
+                    console.log('Using most recent conversation:', currentConversationId);
                 }
+                
+                // Always sort conversations by lastActivity for display, but keep the saved currentConversationId
+                conversations.sort((a, b) => b.lastActivity - a.lastActivity);
+                console.log('Conversations after sorting:', conversations.map(c => ({ id: c.id, title: c.title, lastActivity: c.lastActivity })));
+                console.log('Current conversation ID:', currentConversationId);
 
                 if (savedCurrentBot) {
                     currentBotId = savedCurrentBot;
@@ -550,7 +557,7 @@
         }
 
         function renderConversationList() {
-            conversations.sort((a, b) => b.lastActivity - a.lastActivity);
+            // Don't sort here - conversations are already sorted in loadConversations()
             conversationList.innerHTML = '';
             const unfiledConversations = conversations.filter(c => !c.folderId);
 
@@ -561,7 +568,9 @@
 
             unfiledConversations.forEach(conv => {
                 const li = document.createElement('li');
-                li.className = `flex items-center justify-between p-2 rounded-md text-sm cursor-pointer conversation-item conversation-hover-bg prevent-select ${conv.id === currentConversationId ? 'bg-gray-200 font-semibold' : ''}`;
+                const isSelected = conv.id === currentConversationId;
+                console.log(`Rendering conversation ${conv.id} (${conv.title}), selected: ${isSelected}, currentConversationId: ${currentConversationId}`);
+                li.className = `flex items-center justify-between p-2 rounded-md text-sm cursor-pointer conversation-item conversation-hover-bg prevent-select ${isSelected ? 'bg-gray-200 font-semibold' : ''}`;
                 li.dataset.id = conv.id;
 
                 const titleSpan = document.createElement('span');
