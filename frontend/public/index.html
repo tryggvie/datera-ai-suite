@@ -410,16 +410,18 @@
             html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>');
             
             // Convert bullet points using standardized markup
-            // Main bullets: - (single dash)
-            // Sub-bullets: -- (double dash)
-            html = html.replace(/^[\s]*--[\s]+(.+)$/gm, (match, content) => {
+            // Handle both line-start bullets and bullets after <br> tags
+            
+            // First, handle sub-bullets (-- double dash)
+            html = html.replace(/(^|<br>)\s*--[\s]+(.+?)(?=<br>|$)/gm, (match, prefix, content) => {
                 console.log(`Sub-bullet match: "${match}"`);
-                return `<li class="ml-6">${content}</li>`;
+                return `${prefix}<li class="ml-6">${content}</li>`;
             });
             
-            html = html.replace(/^[\s]*-[\s]+(.+)$/gm, (match, content) => {
+            // Then handle main bullets (- single dash)
+            html = html.replace(/(^|<br>)\s*-[\s]+(.+?)(?=<br>|$)/gm, (match, prefix, content) => {
                 console.log(`Main bullet match: "${match}"`);
-                return `<li>${content}</li>`;
+                return `${prefix}<li>${content}</li>`;
             });
             
             // Wrap consecutive <li> elements in <ul>
