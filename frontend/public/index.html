@@ -399,9 +399,18 @@
             let html = escaped;
             
             // Convert markdown headers to HTML FIRST (before converting newlines)
-            html = html.replace(/^### (.+)$/gm, '<h3 class="font-semibold text-base mb-2 mt-3">$1</h3>');
-            html = html.replace(/^## (.+)$/gm, '<h2 class="font-semibold text-lg mb-2 mt-4">$1</h2>');
-            html = html.replace(/^# (.+)$/gm, '<h1 class="font-semibold text-xl mb-3 mt-4">$1</h1>');
+            html = html.replace(/^### (.+)$/gm, (match, content) => {
+                console.log(`H3 header match: "${match}" -> "${content}"`);
+                return `<h3 class="font-semibold text-base mb-2 mt-3">${content}</h3>`;
+            });
+            html = html.replace(/^## (.+)$/gm, (match, content) => {
+                console.log(`H2 header match: "${match}" -> "${content}"`);
+                return `<h2 class="font-semibold text-lg mb-2 mt-4">${content}</h2>`;
+            });
+            html = html.replace(/^# (.+)$/gm, (match, content) => {
+                console.log(`H1 header match: "${match}" -> "${content}"`);
+                return `<h1 class="font-semibold text-xl mb-3 mt-4">${content}</h1>`;
+            });
             
             // Convert line breaks to <br> tags AFTER processing headers
             html = html.replace(/\n/g, '<br>');
