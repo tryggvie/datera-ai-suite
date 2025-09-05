@@ -268,6 +268,9 @@ async def chat(
     request_id = str(uuid.uuid4())
     start_time = time.time()
     
+    # Debug: Log the incoming request
+    logger.info(f"Request {request_id}: Received request - bot_id: {request.bot_id}, image_url: {request.image_url}, messages count: {len(request.messages) if request.messages else 0}")
+    
     # Validate bot_id and get persona
     if request.bot_id not in persona_cache:
         logger.warning(f"Request {request_id}: Unknown bot_id '{request.bot_id}' requested")
@@ -368,6 +371,7 @@ async def chat(
         # Add temperature if specified and valid
         if temperature is not None and temperature > 0:
             response_params["temperature"] = temperature
+            logger.info(f"Request {request_id}: Added temperature {temperature} to response_params")
         
         # Create streaming response (simulated since Response API doesn't support streaming yet)
         async def generate_response():
