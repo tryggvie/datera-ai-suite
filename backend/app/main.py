@@ -443,6 +443,7 @@ async def chat(
                 if hasattr(response, 'output_text'):
                     # Direct access to output_text (MockResponse)
                     output_text = response.output_text or ""
+                    logger.info(f"Request {request_id}: Raw response text (MockResponse): {output_text[:200]}...")
                 elif hasattr(response, 'output') and response.output:
                     # Response API format
                     for item in response.output:
@@ -452,6 +453,7 @@ async def chat(
                                     output_text += content.text
                         elif hasattr(item, "summary") and item.summary:
                             reasoning_summary = item.summary[0].text if item.summary else None
+                    logger.info(f"Request {request_id}: Raw response text (Response API): {output_text[:200]}...")
                 else:
                     logger.error(f"Request {request_id}: No valid output found in response")
                     output_text = "Sorry, I couldn't generate a response. Please try again."
