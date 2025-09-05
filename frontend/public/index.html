@@ -10,7 +10,7 @@
     <meta name="bingbot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
     <link rel="canonical" href="https://ai.datera.is/">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/@vercel/blob@0.0.1/dist/index.umd.js"></script>
+    <script src="https://unpkg.com/@vercel/blob@latest/dist/index.umd.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -330,11 +330,10 @@
         const BLOB_READ_WRITE_TOKEN = 'vercel_blob_rw_RGIqLjcSUWQkzWiMvQkKhNKmrUA00oA70';
         
         // Configure Vercel Blob SDK
-        if (window.VercelBlob) {
-            window.VercelBlob.configure({
-                token: BLOB_READ_WRITE_TOKEN
-            });
-        }
+        // The SDK might load as a different global variable
+        console.log('Available globals:', Object.keys(window).filter(k => k.toLowerCase().includes('blob')));
+        console.log('VercelBlob object:', window.VercelBlob);
+        console.log('All window properties:', Object.keys(window).filter(k => k.includes('vercel') || k.includes('blob')));
 
         // Debug functions
         function toggleDebugPanel() {
@@ -1312,6 +1311,11 @@
                     showToast('Uploading image...', 'info');
                     
                     // Upload directly to Vercel Blob
+                    // Check if Vercel Blob SDK is available
+                    if (typeof window.VercelBlob === 'undefined') {
+                        throw new Error('Vercel Blob SDK not loaded. Please refresh the page.');
+                    }
+                    
                     const blob = await window.VercelBlob.put(file.name, file, {
                         access: 'public',
                         addRandomSuffix: true
