@@ -20,21 +20,29 @@
             background-color: #F8F9FA;
         }
         
-        /* Ensure proper layout from start */
+        /* Ensure proper layout from start using CSS Grid */
         .main-content {
             height: 100vh;
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            grid-template-areas: 
+                "header"
+                "chat"
+                "input";
+        }
+        
+        .main-header {
+            grid-area: header;
         }
         
         .chat-output {
-            flex: 1;
-            min-height: 0;
+            grid-area: chat;
             overflow-y: auto;
+            min-height: 0;
         }
         
         .input-area {
-            flex-shrink: 0;
+            grid-area: input;
         }
         /* User's chat bubble style */
         .chat-bubble-user {
@@ -204,9 +212,9 @@
     </aside>
 
     <!-- Main Content -->
-    <main class="main-content flex-1 flex flex-col bg-white h-full">
+    <main class="main-content flex-1 bg-white h-full">
         <!-- Main Header (Combined) -->
-        <header class="h-16 flex justify-between items-center px-6 border-b border-gray-200 shrink-0">
+        <header class="main-header h-16 flex justify-between items-center px-6 border-b border-gray-200 shrink-0">
             <!-- Left Side: Bot Info -->
             <div>
                  <p class="text-xs text-gray-500 mb-1">You are currently talking to...</p>
@@ -274,12 +282,12 @@
         </div>
 
         <!-- Chat Output -->
-        <div id="chat-output" class="chat-output flex-1 p-6 space-y-4 overflow-y-auto min-h-0">
+        <div id="chat-output" class="chat-output p-6 space-y-4">
              <!-- Messages will be appended here by JS -->
         </div>
 
         <!-- Input Area -->
-        <div class="input-area py-6 bg-white shrink-0">
+        <div class="input-area py-6 bg-white">
             <div class="max-w-4xl mx-auto px-4">
             <!-- Image Attachment Preview -->
             <div id="attachment-preview-container" class="hidden mb-2">
@@ -650,16 +658,6 @@
             
             // Initialize debug panel
             updateDebugInfo(API_BASE_URL);
-            
-            // Force layout recalculation to fix initial positioning issues
-            setTimeout(() => {
-                const mainContent = document.querySelector('.main-content');
-                if (mainContent) {
-                    mainContent.style.display = 'none';
-                    mainContent.offsetHeight; // Trigger reflow
-                    mainContent.style.display = 'flex';
-                }
-            }, 100);
             
             console.log('App initialization complete');
         });
