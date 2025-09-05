@@ -325,70 +325,27 @@ async def chat(
             current_temperature = temperature
             current_max_tokens = max_tokens
             try:
-                # Make the API call - try Response API first, fallback to Chat Completions
+                # Make the API call - try Response API with primary model first
                 try:
                     response = client.responses.create(**response_params)
+                    final_model_used = current_model
                 except (AttributeError, Exception) as e:
-                    # Try fallback model if primary model fails
+                    # Try fallback model within Responses API if primary model fails
                     if current_model != current_fallback:
-                        logger.warning(f"Primary model {current_model} failed ({str(e)}), trying fallback model {current_fallback}")
+                        logger.warning(f"Primary model {current_model} failed ({str(e)}), trying fallback model {current_fallback} within Responses API")
                         try:
                             fallback_params = response_params.copy()
                             fallback_params["model"] = current_fallback
                             response = client.responses.create(**fallback_params)
                             current_model = current_fallback  # Update for logging
                             final_model_used = current_fallback  # Update final model
-                            logger.info(f"Successfully used fallback model {current_fallback}")
+                            logger.info(f"Successfully used fallback model {current_fallback} within Responses API")
                         except Exception as e2:
-                            logger.warning(f"Fallback model {current_fallback} also failed ({str(e2)}), falling back to Chat Completions")
-                            # Final fallback to Chat Completions
-                            # For Chat Completions, we need to send the full conversation history
-                            openai_messages = [{"role": msg.role, "content": msg.content} for msg in request.messages]
-                            
-                            # Add persona instructions as system message
-                            openai_messages.insert(0, {"role": "system", "content": persona['text']})
-                            
-                            chat_params = {
-                                "model": current_fallback,
-                                "messages": openai_messages
-                            }
-                            chat_params["temperature"] = current_temperature
-                            if current_max_tokens and current_max_tokens > 0:
-                                chat_params["max_tokens"] = current_max_tokens
-
-                            response = client.chat.completions.create(**chat_params)
-                            current_model = current_fallback  # Update for logging
-                            final_model_used = current_fallback  # Update final model
+                            logger.error(f"Both primary model {current_model} and fallback model {current_fallback} failed in Responses API: {str(e2)}")
+                            raise e2
                     else:
-                        # For other models, fall back to Chat Completions
-                        logger.warning(f"Response API not available for {current_model}, falling back to Chat Completions")
-                        # For Chat Completions, we need to send the full conversation history
-                        openai_messages = [{"role": msg.role, "content": msg.content} for msg in request.messages]
-                        
-                        # Add persona instructions as system message
-                        openai_messages.insert(0, {"role": "system", "content": persona['text']})
-                        
-                        chat_params = {
-                            "model": current_model,
-                            "messages": openai_messages
-                        }
-                        chat_params["temperature"] = current_temperature
-                        if current_max_tokens and current_max_tokens > 0:
-                            chat_params["max_tokens"] = current_max_tokens
-
-                        response = client.chat.completions.create(**chat_params)
-                        final_model_used = current_model  # Update final model
-                    # Convert to Response API format for consistency
-                    class MockResponse:
-                        def __init__(self, chat_response):
-                            self.output_text = chat_response.choices[0].message.content
-                            # Create a proper output structure
-                            content_obj = type('Content', (), {'text': self.output_text})()
-                            item_obj = type('Item', (), {'content': [content_obj]})()
-                            self.output = [item_obj]
-                            self.model = chat_response.model
-                            self.usage = chat_response.usage
-                    response = MockResponse(response)
+                        logger.error(f"Responses API failed for {current_model} and no fallback model available: {str(e)}")
+                        raise e
                 
                 # Extract the output text
                 output_text = ""
