@@ -298,14 +298,17 @@ async def chat(
             "text": {
                 "verbosity": request.verbosity
             },
-            "reasoning": {
-                "effort": request.reasoning_effort
-            },
             "metadata": {
                 "persona_id": request.bot_id,
                 "persona_version": persona['version']
             }
         }
+        
+        # Only add reasoning parameters for models that support them (like gpt-5)
+        if model_to_use == "gpt-5":
+            response_params["reasoning"] = {
+                "effort": request.reasoning_effort
+            }
         
         # Add previous_response_id for conversation state management
         if request.previous_response_id:
@@ -334,6 +337,9 @@ async def chat(
                         try:
                             fallback_params = response_params.copy()
                             fallback_params["model"] = current_fallback
+                            # Remove reasoning parameters for fallback model if it doesn't support them
+                            if current_fallback != "gpt-5" and "reasoning" in fallback_params:
+                                del fallback_params["reasoning"]
                             response = client.responses.create(**fallback_params)
                             current_model = current_fallback  # Update for logging
                             final_model_used = current_fallback  # Update final model
