@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>AI Assistants Suite</title>
     <meta name="description" content="AI-powered assistants for various tasks and conversations">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
@@ -15,6 +18,23 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: #F8F9FA;
+        }
+        
+        /* Ensure proper layout from start */
+        .main-content {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-output {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+        }
+        
+        .input-area {
+            flex-shrink: 0;
         }
         /* User's chat bubble style */
         .chat-bubble-user {
@@ -184,7 +204,7 @@
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 flex flex-col bg-white h-full">
+    <main class="main-content flex-1 flex flex-col bg-white h-full">
         <!-- Main Header (Combined) -->
         <header class="h-16 flex justify-between items-center px-6 border-b border-gray-200 shrink-0">
             <!-- Left Side: Bot Info -->
@@ -254,12 +274,12 @@
         </div>
 
         <!-- Chat Output -->
-        <div id="chat-output" class="flex-1 p-6 space-y-4 overflow-y-auto min-h-0">
+        <div id="chat-output" class="chat-output flex-1 p-6 space-y-4 overflow-y-auto min-h-0">
              <!-- Messages will be appended here by JS -->
         </div>
 
         <!-- Input Area -->
-        <div class="py-6 bg-white shrink-0">
+        <div class="input-area py-6 bg-white shrink-0">
             <div class="max-w-4xl mx-auto px-4">
             <!-- Image Attachment Preview -->
             <div id="attachment-preview-container" class="hidden mb-2">
@@ -630,6 +650,16 @@
             
             // Initialize debug panel
             updateDebugInfo(API_BASE_URL);
+            
+            // Force layout recalculation to fix initial positioning issues
+            setTimeout(() => {
+                const mainContent = document.querySelector('.main-content');
+                if (mainContent) {
+                    mainContent.style.display = 'none';
+                    mainContent.offsetHeight; // Trigger reflow
+                    mainContent.style.display = 'flex';
+                }
+            }, 100);
             
             console.log('App initialization complete');
         });
