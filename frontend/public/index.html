@@ -20,29 +20,38 @@
             background-color: #F8F9FA;
         }
         
-        /* Ensure proper layout from start using CSS Grid */
+        /* Force proper layout from start - more aggressive approach */
         .main-content {
-            height: 100vh;
-            display: grid;
-            grid-template-rows: auto 1fr auto;
-            grid-template-areas: 
-                "header"
-                "chat"
-                "input";
+            height: 100vh !important;
+            display: flex !important;
+            flex-direction: column !important;
+            position: relative !important;
         }
         
         .main-header {
-            grid-area: header;
+            flex-shrink: 0 !important;
+            position: relative !important;
         }
         
         .chat-output {
-            grid-area: chat;
-            overflow-y: auto;
-            min-height: 0;
+            flex: 1 !important;
+            overflow-y: auto !important;
+            min-height: 0 !important;
+            position: relative !important;
         }
         
         .input-area {
-            grid-area: input;
+            flex-shrink: 0 !important;
+            position: relative !important;
+            margin-top: auto !important;
+        }
+        
+        /* Ensure input stays at bottom */
+        .input-area {
+            position: sticky !important;
+            bottom: 0 !important;
+            background: white !important;
+            z-index: 10 !important;
         }
         /* User's chat bubble style */
         .chat-bubble-user {
@@ -637,6 +646,36 @@
             }).filter(msg => msg !== null);
         }
 
+        // Force layout fix function
+        function forceLayoutFix() {
+            const mainContent = document.querySelector('.main-content');
+            const chatOutput = document.querySelector('.chat-output');
+            const inputArea = document.querySelector('.input-area');
+            
+            if (mainContent && chatOutput && inputArea) {
+                // Force reflow
+                mainContent.style.display = 'none';
+                mainContent.offsetHeight;
+                mainContent.style.display = 'flex';
+                
+                // Ensure proper positioning
+                mainContent.style.height = '100vh';
+                mainContent.style.flexDirection = 'column';
+                
+                chatOutput.style.flex = '1';
+                chatOutput.style.minHeight = '0';
+                chatOutput.style.overflowY = 'auto';
+                
+                inputArea.style.flexShrink = '0';
+                inputArea.style.position = 'sticky';
+                inputArea.style.bottom = '0';
+                inputArea.style.background = 'white';
+                inputArea.style.zIndex = '10';
+                
+                console.log('Layout fix applied');
+            }
+        }
+
         // --- App Initialization ---
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('DOM loaded, starting initialization...');
@@ -659,7 +698,19 @@
             // Initialize debug panel
             updateDebugInfo(API_BASE_URL);
             
+            // Force layout fix - run multiple times to ensure it sticks
+            forceLayoutFix();
+            setTimeout(forceLayoutFix, 100);
+            setTimeout(forceLayoutFix, 500);
+            setTimeout(forceLayoutFix, 1000);
+            
             console.log('App initialization complete');
+        });
+        
+        // Backup layout fix on window load
+        window.addEventListener('load', () => {
+            console.log('Window loaded, applying backup layout fix');
+            forceLayoutFix();
         });
         
         async function loadBotConfig() {
@@ -1396,3 +1447,4 @@
     </script>
 </body>
 </html>
+
