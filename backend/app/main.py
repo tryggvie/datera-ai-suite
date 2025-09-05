@@ -180,7 +180,8 @@ class ChatRequest(BaseModel):
     max_tokens: Optional[int] = None
     format_mode: Optional[str] = None  # "brief" for concise responses
     previous_response_id: Optional[str] = None  # For Responses API conversation state
-    image_url: Optional[str] = None  # Optional image URL for vision processing
+    image_url: Optional[str] = None  # Optional single image URL for backward compatibility
+    image_urls: Optional[List[str]] = None  # Optional array of image URLs for multiple images
 
 class HealthResponse(BaseModel):
     status: str
@@ -269,7 +270,7 @@ async def chat(
     start_time = time.time()
     
     # Debug: Log the incoming request
-    logger.info(f"Request {request_id}: Received request - bot_id: {request.bot_id}, image_url: {request.image_url}, messages count: {len(request.messages) if request.messages else 0}")
+    logger.info(f"Request {request_id}: Received request - bot_id: {request.bot_id}, image_url: {request.image_url}, image_urls: {request.image_urls}, messages count: {len(request.messages) if request.messages else 0}")
     
     # Validate bot_id and get persona
     if request.bot_id not in persona_cache:
@@ -297,18 +298,28 @@ async def chat(
         # Conversation context is handled via previous_response_id
         user_message = request.messages[-1].content if request.messages else ""
         
-        # Prepare input data - handle both text and image
-        if request.image_url:
-            # If image is present, structure input as multimodal content
+        # Prepare input data - handle both text and images
+        # Prioritize image_urls array over single image_url for backward compatibility
+        images_to_process = []
+        if request.image_urls and len(request.image_urls) > 0:
+            images_to_process = request.image_urls
+        elif request.image_url:
+            images_to_process = [request.image_url]
+        
+        if images_to_process:
+            # If images are present, structure input as multimodal content
+            content = [{"type": "input_text", "text": user_message}]
+            
+            # Add all images to the content
+            for image_url in images_to_process:
+                content.append({"type": "input_image", "image_url": image_url})
+            
             input_data = [{
                 "role": "user",
-                "content": [
-                    {"type": "input_text", "text": user_message},
-                    {"type": "input_image", "image_url": request.image_url}
-                ]
+                "content": content
             }]
-            logger.info(f"Request {request_id}: Input data prepared with image, text length: {len(user_message)}")
-            logger.info(f"Request {request_id}: Image URL: {request.image_url}")
+            logger.info(f"Request {request_id}: Input data prepared with {len(images_to_process)} images, text length: {len(user_message)}")
+            logger.info(f"Request {request_id}: Image URLs: {images_to_process}")
             logger.info(f"Request {request_id}: Full input data: {input_data}")
         else:
             # Text-only input

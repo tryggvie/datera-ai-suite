@@ -450,7 +450,8 @@
         let conversations = [];
         let messages = {};
         let folders = [];
-        let stagedImage = null;
+        let stagedImage = null; // Current image being uploaded
+        let conversationImages = []; // All images in current conversation
         let isStreaming = false;
         let lastResponseId = null; // Store response_id for conversation state
 
@@ -871,10 +872,12 @@
             // Reset response_id when switching conversations
             lastResponseId = null;
             
-            // Clear staged image when switching to a different conversation
+            // Clear staged image and conversation images when switching to a different conversation
             // (but only if it's a different conversation than the previous one)
             if (previousConversationId && previousConversationId !== convId) {
                 clearStagedImage();
+                conversationImages = [];
+                console.log('Cleared conversation images for new conversation');
             }
         }
         
@@ -892,8 +895,10 @@
             messages[newConvId] = [];
             saveConversations();
             
-            // Clear staged image when starting a new conversation
+            // Clear staged image and conversation images when starting a new conversation
             clearStagedImage();
+            conversationImages = [];
+            console.log('Cleared conversation images for new conversation');
             
             loadConversation(newConvId);
         }
@@ -1076,9 +1081,9 @@
                 attachmentPreviewContainer.classList.add('hidden');
             }
             
-            // Send to API with image URL
-            console.log('About to call sendToAPI with stagedImage:', stagedImage);
-            await sendToAPI(text, stagedImage);
+            // Send to API with all conversation images
+            console.log('About to call sendToAPI with conversationImages:', conversationImages);
+            await sendToAPI(text, conversationImages);
             
             // Don't clear staged image - keep it for follow-up questions in this conversation
             // Only clear when starting a new conversation
@@ -1113,8 +1118,8 @@
             }
         }
 
-        async function sendToAPI(text, imageUrl = null) {
-            console.log('sendToAPI called with:', { text, imageUrl });
+        async function sendToAPI(text, imageUrls = []) {
+            console.log('sendToAPI called with:', { text, imageUrls });
             isStreaming = true;
             sendMessageButton.disabled = true;
             
@@ -1136,9 +1141,9 @@
                     previous_response_id: lastResponseId
                 };
                 
-                // Add image URL if present
-                if (imageUrl) {
-                    requestBody.image_url = imageUrl;
+                // Add image URLs if present (send all conversation images)
+                if (imageUrls && imageUrls.length > 0) {
+                    requestBody.image_urls = imageUrls; // Send as array
                 }
                 
                 console.log('Sending request body:', requestBody);
@@ -1460,8 +1465,12 @@
                     console.log('Image upload successful, stagedImage set to:', stagedImage);
                     console.log('stagedImage variable after assignment:', stagedImage);
                     
-                    // Update debug panel with image URL
-                    document.getElementById('debugImageUrl').textContent = blob.url;
+                    // Add to conversation images array
+                    conversationImages.push(blob.url);
+                    console.log('Added to conversationImages:', conversationImages);
+                    
+                    // Update debug panel with all image URLs
+                    document.getElementById('debugImageUrl').textContent = conversationImages.join(', ');
                     
                     // Switch from spinner to thumbnail
                     document.getElementById('uploading-placeholder').classList.add('hidden');
