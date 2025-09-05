@@ -389,7 +389,14 @@ async def chat(
         model_to_use = persona.get('model', request.model)
         fallback_model = persona.get('fallback_model', 'gpt-4o')
         # Prioritize request temperature over persona temperature for mode switching
-        temperature = request.temperature if request.temperature != 0.7 else persona.get('temperature', 0.7)
+        # Ensure temperature is always a valid float between 0 and 2
+        if request.temperature is not None and request.temperature > 0:
+            temperature = request.temperature
+        else:
+            temperature = persona.get('temperature', 0.7)
+        
+        # Ensure temperature is within valid range
+        temperature = max(0.0, min(2.0, temperature))
         max_tokens = persona.get('max_output_tokens', request.max_tokens)
         
         # Initialize model_to_use for error handling
@@ -423,8 +430,8 @@ async def chat(
         if request.previous_response_id:
             response_params["previous_response_id"] = request.previous_response_id
         
-        # Add temperature if specified (but not for gpt-5 which doesn't support it)
-        if model_to_use != "gpt-5":
+        # Add temperature if specified and valid
+        if temperature is not None and temperature > 0:
             response_params["temperature"] = temperature
         
         # Create streaming response (simulated since Response API doesn't support streaming yet)
