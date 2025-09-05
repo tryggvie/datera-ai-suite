@@ -10,10 +10,7 @@
     {
       "src": "/(.*)",
       "dest": "/frontend/public/$1"
-    },
-    {
-      "src": "/",
-      "dest": "/frontend/public/index.html"
     }
-  ]
+  ],
+  "outputDirectory": "frontend/public"
 }
