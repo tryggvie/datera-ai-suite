@@ -280,18 +280,17 @@ async def upload_image(file: UploadFile = File(...)):
             )
         
         # Upload to Vercel Blob using httpx
-        # Try the store-specific endpoint based on the store ID
-        store_id = "store_RGIqLjcSUWQkzWiM"  # From your store info
+        # Try using the store-specific URL format
+        store_url = "https://rgiqljcsuwqkzwim.public.blob.vercel-storage.com"
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"https://api.vercel.com/v2/blob/{store_id}",
+                f"{store_url}/{unique_filename}",
                 headers={
                     "Authorization": f"Bearer {blob_token}",
                     "Content-Type": file.content_type
                 },
                 data=content,
                 params={
-                    "filename": unique_filename,
                     "access": "public"
                 },
                 timeout=30.0
