@@ -61,6 +61,36 @@
             background-color: #00FFC7; 
         }
 
+        /* Active bot styling */
+        .bot-active {
+            background-color: #00FFC7 !important;
+        }
+        
+        .bot-active .new-chat-icon {
+            opacity: 0.2;
+        }
+        
+        .bot-active:hover {
+            background-color: #00E6B3 !important;
+        }
+        
+        .bot-active:hover .new-chat-icon {
+            opacity: 1;
+        }
+
+        /* Mode help tooltip styling */
+        #mode-help-tooltip::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            right: 8px;
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 6px solid #374151;
+        }
+
         .conversation-hover-bg:hover { background-color: #E9E9E9; }
 
         /* Prevent selections during interaction */
@@ -174,6 +204,18 @@
             <button id="mode-creative" class="mode-button px-3 py-1 text-xs font-medium rounded-md transition-colors text-gray-600 hover:text-gray-900" title="For slogans, hooks, headlines, campaign concepts">
                 Creative
             </button>
+            <div class="relative">
+                <button id="mode-help-button" class="w-5 h-5 rounded-full border border-gray-400 hover:border-gray-500 flex items-center justify-center text-xs font-light text-gray-400 hover:text-gray-500 transition-colors" title="Mode explanations">
+                    ?
+                </button>
+                <div id="mode-help-tooltip" class="absolute top-6 right-0 bg-gray-800 text-white text-xs rounded-lg p-3 w-64 shadow-lg z-50 hidden">
+                    <div class="space-y-1">
+                        <div><span class="font-semibold">Strategic:</span> Plans, frameworks, PR briefs</div>
+                        <div><span class="font-semibold">Balanced:</span> Everyday ideation with novelty</div>
+                        <div><span class="font-semibold">Creative:</span> Slogans, hooks, campaign concepts</div>
+                    </div>
+                </div>
+            </div>
         </div>
                  </div>
             </div>
@@ -542,6 +584,8 @@
         const modeStrategic = document.getElementById('mode-strategic');
         const modeBalanced = document.getElementById('mode-balanced');
         const modeCreative = document.getElementById('mode-creative');
+        const modeHelpButton = document.getElementById('mode-help-button');
+        const modeHelpTooltip = document.getElementById('mode-help-tooltip');
         const convContextMenu = document.getElementById('conversation-context-menu');
         const newFolderButton = document.getElementById('new-folder-button');
         const uploadButton = document.getElementById('upload-button');
@@ -627,7 +671,7 @@
                 
                 pill.className = `w-full text-left flex items-center p-2 rounded-md font-medium text-sm bot-pill transition-colors duration-200 ${
                     isEnabled ? 'bot-hover-bg' : 'bot-disabled'
-                } ${isCurrent ? 'bg-gray-200' : ''}`;
+                } ${isCurrent ? 'bot-active' : ''}`;
                 
                 pill.dataset.botId = bot.id;
                 pill.setAttribute('aria-disabled', !isEnabled);
@@ -852,6 +896,19 @@
             modeStrategic.addEventListener('click', () => setMode('strategic'));
             modeBalanced.addEventListener('click', () => setMode('balanced'));
             modeCreative.addEventListener('click', () => setMode('creative'));
+            
+            // Help button functionality
+            modeHelpButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                modeHelpTooltip.classList.toggle('hidden');
+            });
+            
+            // Hide tooltip when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!modeHelpButton.contains(e.target) && !modeHelpTooltip.contains(e.target)) {
+                    modeHelpTooltip.classList.add('hidden');
+                }
+            });
             
             // Initialize with current mode (loaded from localStorage or default 'strategic')
             setMode(currentMode);
