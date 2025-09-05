@@ -398,13 +398,13 @@
             
             let html = escaped;
             
-            // Convert line breaks to <br> tags
-            html = html.replace(/\n/g, '<br>');
-            
-            // Convert markdown headers to bold text
+            // Convert markdown headers to HTML FIRST (before converting newlines)
             html = html.replace(/^### (.+)$/gm, '<h3 class="font-semibold text-base mb-2 mt-3">$1</h3>');
             html = html.replace(/^## (.+)$/gm, '<h2 class="font-semibold text-lg mb-2 mt-4">$1</h2>');
             html = html.replace(/^# (.+)$/gm, '<h1 class="font-semibold text-xl mb-3 mt-4">$1</h1>');
+            
+            // Convert line breaks to <br> tags AFTER processing headers
+            html = html.replace(/\n/g, '<br>');
             
             // Convert bold text **text** to <strong> FIRST (before bullet processing)
             html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>');
@@ -439,8 +439,8 @@
             // Convert double line breaks to paragraph breaks
             html = html.replace(/(<br>\s*){2,}/g, '</p><p class="mb-2">');
             
-            // Wrap in paragraph tags if not already wrapped
-            if (!html.startsWith('<p') && !html.startsWith('<ul') && !html.startsWith('<li') && !html.startsWith('<h')) {
+            // Wrap in paragraph tags if not already wrapped and doesn't contain block elements
+            if (!html.includes('<h') && !html.includes('<ul') && !html.includes('<li') && !html.startsWith('<p')) {
                 html = `<p class="mb-2">${html}</p>`;
             }
             
