@@ -10,6 +10,7 @@
     <meta name="bingbot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
     <link rel="canonical" href="https://ai.datera.is/">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@vercel/blob@0.0.1/dist/index.umd.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -326,6 +327,14 @@
         // Configuration - always use Railway backend as per user requirement
         const API_BASE_URL = 'https://datera-ai-suite-production.up.railway.app';
         const GATEWAY_TOKEN = 'c17e4ea45486a836e15eae268ecc5043312c96f5bec19a9fc9f1452f30b361bd';
+        const BLOB_READ_WRITE_TOKEN = 'vercel_blob_rw_RGIqLjcSUWQkzWiMvQkKhNKmrUA00oA70';
+        
+        // Configure Vercel Blob SDK
+        if (window.VercelBlob) {
+            window.VercelBlob.configure({
+                token: BLOB_READ_WRITE_TOKEN
+            });
+        }
 
         // Debug functions
         function toggleDebugPanel() {
@@ -1302,25 +1311,18 @@
                     // Show loading state
                     showToast('Uploading image...', 'info');
                     
-                    // Upload to backend
-                    const formData = new FormData();
-                    formData.append('file', file);
-                    
-                    const response = await fetch(`${API_BASE_URL}/api/upload-image`, {
-                        method: 'POST',
-                        body: formData
+                    // Upload directly to Vercel Blob
+                    const blob = await window.VercelBlob.put(file.name, file, {
+                        access: 'public',
+                        addRandomSuffix: true
                     });
                     
-                    const result = await response.json();
+                    // Store the image URL for later use
+                    stagedImage = blob.url;
+                    attachmentThumbnail.src = blob.url;
+                    attachmentPreviewContainer.classList.remove('hidden');
+                    showToast('Image uploaded successfully!', 'success');
                     
-                    if (result.success) {
-                        stagedImage = result.image_url;
-                        attachmentThumbnail.src = result.image_url;
-                        attachmentPreviewContainer.classList.remove('hidden');
-                        showToast('Image uploaded successfully!', 'success');
-                    } else {
-                        showToast(`Upload failed: ${result.error}`, 'error');
-                    }
                 } catch (error) {
                     console.error('Error uploading image:', error);
                     showToast('Failed to upload image. Please try again.', 'error');
