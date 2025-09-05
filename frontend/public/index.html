@@ -1036,7 +1036,6 @@
             }
             
             loadConversation(currentConversationId);
-            clearStagedImage();
             messageInput.value = '';
             adjustTextareaHeight();
             
@@ -1046,6 +1045,9 @@
             // Send to API with image URL
             console.log('About to call sendToAPI with stagedImage:', stagedImage);
             await sendToAPI(text, stagedImage);
+            
+            // Clear staged image AFTER sending to API
+            clearStagedImage();
         }
 
         function showTypingIndicator() {
