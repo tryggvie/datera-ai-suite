@@ -322,6 +322,8 @@ async def chat(
             # Use the variables from the outer scope
             current_model = model_to_use
             current_fallback = fallback_model
+            current_temperature = temperature
+            current_max_tokens = max_tokens
             try:
                 # Make the API call - try Response API first, fallback to Chat Completions
                 try:
@@ -340,10 +342,8 @@ async def chat(
                         except Exception as e2:
                             logger.warning(f"Fallback model {current_fallback} also failed ({str(e2)}), falling back to Chat Completions")
                             # Final fallback to Chat Completions
-                            if isinstance(input_data, str):
-                                openai_messages = [{"role": "user", "content": input_data}]
-                            else:
-                                openai_messages = input_data
+                            # For Chat Completions, we need to send the full conversation history
+                            openai_messages = [{"role": msg.role, "content": msg.content} for msg in request.messages]
                             
                             # Add persona instructions as system message
                             openai_messages.insert(0, {"role": "system", "content": persona['text']})
@@ -352,9 +352,9 @@ async def chat(
                                 "model": current_fallback,
                                 "messages": openai_messages
                             }
-                            chat_params["temperature"] = temperature
-                            if max_tokens and max_tokens > 0:
-                                chat_params["max_tokens"] = max_tokens
+                            chat_params["temperature"] = current_temperature
+                            if current_max_tokens and current_max_tokens > 0:
+                                chat_params["max_tokens"] = current_max_tokens
 
                             response = client.chat.completions.create(**chat_params)
                             current_model = current_fallback  # Update for logging
@@ -362,10 +362,8 @@ async def chat(
                     else:
                         # For other models, fall back to Chat Completions
                         logger.warning(f"Response API not available for {current_model}, falling back to Chat Completions")
-                        if isinstance(input_data, str):
-                            openai_messages = [{"role": "user", "content": input_data}]
-                        else:
-                            openai_messages = input_data
+                        # For Chat Completions, we need to send the full conversation history
+                        openai_messages = [{"role": msg.role, "content": msg.content} for msg in request.messages]
                         
                         # Add persona instructions as system message
                         openai_messages.insert(0, {"role": "system", "content": persona['text']})
@@ -374,9 +372,9 @@ async def chat(
                             "model": current_model,
                             "messages": openai_messages
                         }
-                        chat_params["temperature"] = temperature
-                        if max_tokens and max_tokens > 0:
-                            chat_params["max_tokens"] = max_tokens
+                        chat_params["temperature"] = current_temperature
+                        if current_max_tokens and current_max_tokens > 0:
+                            chat_params["max_tokens"] = current_max_tokens
 
                         response = client.chat.completions.create(**chat_params)
                         final_model_used = current_model  # Update final model
