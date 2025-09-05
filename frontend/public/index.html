@@ -1391,6 +1391,10 @@
                     document.getElementById('uploading-placeholder').classList.remove('hidden');
                     document.getElementById('attachment-thumbnail').classList.add('hidden');
                     
+                    // Reset placeholder content to spinner
+                    const placeholder = document.getElementById('uploading-placeholder');
+                    placeholder.innerHTML = '<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-600"></div>';
+                    
                     // Upload via Vercel serverless function
                     const response = await fetch('/api/upload-image', {
                         method: 'POST',
@@ -1416,16 +1420,15 @@
                     attachmentThumbnail.src = blob.url;
                     document.getElementById('attachment-thumbnail').classList.remove('hidden');
                     
-                    showToast('Image uploaded successfully!', 'success');
-                    
                 } catch (error) {
                     console.error('Error uploading image:', error);
-                    showToast('Failed to upload image. Please try again.', 'error');
                     
-                    // Hide the uploading placeholder on error
-                    attachmentPreviewContainer.classList.add('hidden');
-                    document.getElementById('uploading-placeholder').classList.add('hidden');
-                    document.getElementById('attachment-thumbnail').classList.add('hidden');
+                    // Show upload failed message in placeholder
+                    const placeholder = document.getElementById('uploading-placeholder');
+                    placeholder.innerHTML = '<div class="text-red-600 text-xs text-center leading-tight">Upload<br>failed</div>';
+                    
+                    // Keep placeholder visible but remove the spinner
+                    // Don't hide the container, just change the content
                 }
             } else {
                 showToast('Please select a valid image file (JPEG, PNG, WEBP, or GIF).', 'error');
