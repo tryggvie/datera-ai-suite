@@ -246,11 +246,74 @@ async def verify_passcode(request: PasscodeRequest):
         logger.warning(f"Invalid passcode attempt: {request.passcode[:3]}...")
         return PasscodeResponse(valid=False, message="Invalid passcode")
 
-# Temporarily disable image upload to fix basic chat functionality
-# @app.post("/api/upload-image", response_model=ImageUploadResponse)
-# async def upload_image(file: UploadFile = File(...)):
-#     """Upload image to Vercel Blob storage - temporarily disabled"""
-#     return ImageUploadResponse(success=False, error="Image upload temporarily disabled")
+@app.post("/api/upload-image", response_model=ImageUploadResponse)
+async def upload_image(file: UploadFile = File(...)):
+    """Upload image to Vercel Blob storage"""
+    try:
+        # Validate file type
+        if not file.content_type or not file.content_type.startswith('image/'):
+            return ImageUploadResponse(
+                success=False,
+                error="File must be an image (JPEG, PNG, WEBP, or GIF)"
+            )
+        
+        # Validate file size (50MB limit)
+        content = await file.read()
+        if len(content) > 50 * 1024 * 1024:  # 50MB
+            return ImageUploadResponse(
+                success=False,
+                error="File too large. Maximum size is 50MB"
+            )
+        
+        # Generate unique filename
+        import uuid
+        file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
+        unique_filename = f"uploaded-images/{uuid.uuid4()}.{file_extension}"
+        
+        # Get Vercel Blob token
+        blob_token = os.getenv("BLOB_READ_WRITE_TOKEN")
+        if not blob_token:
+            logger.error("BLOB_READ_WRITE_TOKEN not found in environment variables")
+            return ImageUploadResponse(
+                success=False,
+                error="Blob storage not configured"
+            )
+        
+        # Upload to Vercel Blob using httpx
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.vercel.com/v2/blob",
+                headers={
+                    "Authorization": f"Bearer {blob_token}",
+                    "Content-Type": file.content_type
+                },
+                data=content,
+                params={
+                    "filename": unique_filename,
+                    "access": "public"
+                }
+            )
+            
+            if response.status_code == 200:
+                blob_data = response.json()
+                logger.info(f"Image uploaded successfully: {blob_data['url']}")
+                return ImageUploadResponse(
+                    success=True,
+                    image_url=blob_data['url']
+                )
+            else:
+                logger.error(f"Vercel Blob upload failed: {response.status_code} - {response.text}")
+                return ImageUploadResponse(
+                    success=False,
+                    error=f"Upload failed: {response.status_code}"
+                )
+                
+    except Exception as e:
+        logger.error(f"Error uploading image: {str(e)}")
+        return ImageUploadResponse(
+            success=False,
+            error=f"Upload failed: {str(e)}"
+        )
 
 @app.post("/admin/reload-personas")
 async def reload_personas(token: str = Depends(verify_gateway_token)):
