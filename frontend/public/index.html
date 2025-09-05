@@ -405,7 +405,9 @@
                 if (savedCurrentConv && conversations.find(c => c.id === savedCurrentConv)) {
                     currentConversationId = savedCurrentConv;
                 } else if (conversations.length > 0) {
-                    // If no saved conversation or saved conversation doesn't exist, use the first available
+                    // Sort conversations by lastActivity to get the most recent
+                    conversations.sort((a, b) => b.lastActivity - a.lastActivity);
+                    // If no saved conversation or saved conversation doesn't exist, use the most recent
                     currentConversationId = conversations[0].id;
                 }
 
