@@ -844,6 +844,8 @@
                 return;
             }
             
+            // Store previous conversation ID before changing it
+            const previousConversationId = currentConversationId;
             currentConversationId = convId;
             currentBotId = conv.botId;
             
@@ -863,6 +865,12 @@
             
             // Reset response_id when switching conversations
             lastResponseId = null;
+            
+            // Clear staged image when switching to a different conversation
+            // (but only if it's a different conversation than the previous one)
+            if (previousConversationId && previousConversationId !== convId) {
+                clearStagedImage();
+            }
         }
         
         function startNewConversation(botId) {
@@ -878,6 +886,10 @@
             conversations.unshift(newConv);
             messages[newConvId] = [];
             saveConversations();
+            
+            // Clear staged image when starting a new conversation
+            clearStagedImage();
+            
             loadConversation(newConvId);
         }
 
@@ -1046,8 +1058,8 @@
             console.log('About to call sendToAPI with stagedImage:', stagedImage);
             await sendToAPI(text, stagedImage);
             
-            // Clear staged image AFTER sending to API
-            clearStagedImage();
+            // Don't clear staged image - keep it for follow-up questions in this conversation
+            // Only clear when starting a new conversation
         }
 
         function showTypingIndicator() {
