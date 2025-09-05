@@ -176,6 +176,7 @@ class ChatRequest(BaseModel):
     temperature: float = 0.7
     max_tokens: Optional[int] = None
     format_mode: Optional[str] = None  # "brief" for concise responses
+    previous_response_id: Optional[str] = None  # For Responses API conversation state
 
 class HealthResponse(BaseModel):
     status: str
@@ -261,12 +262,9 @@ async def chat(
         logger.info(f"Request {request_id}: Starting persona processing for bot_id: {request.bot_id}")
         
         # Prepare input for OpenAI Response API
-        if len(request.messages) == 1:
-            # Single message - use as input string
-            input_data = request.messages[0].content
-        else:
-            # Multiple messages - use as input array
-            input_data = [{"role": msg.role, "content": msg.content} for msg in request.messages]
+        # For Responses API, we only use the latest user message as input
+        # Conversation context is handled via previous_response_id
+        input_data = request.messages[-1].content if request.messages else ""
         
         logger.info(f"Request {request_id}: Input data prepared, length: {len(str(input_data))}")
         
@@ -281,13 +279,14 @@ async def chat(
         # Use persona model and settings
         model_to_use = persona.get('model', request.model)
         fallback_model = persona.get('fallback_model', 'gpt-4o')
-        temperature = persona.get('temperature', request.temperature)
+        # Prioritize request temperature over persona temperature for mode switching
+        temperature = request.temperature if request.temperature != 0.7 else persona.get('temperature', 0.7)
         max_tokens = persona.get('max_output_tokens', request.max_tokens)
         
         # Initialize model_to_use for error handling
         final_model_used = model_to_use
         
-        logger.info(f"Request {request_id}: Processing chat with persona '{request.bot_id}' (v{persona['version']}) using model {model_to_use}, verbosity: {request.verbosity}")
+        logger.info(f"Request {request_id}: Processing chat with persona '{request.bot_id}' (v{persona['version']}) using model {model_to_use}, temperature: {temperature}, verbosity: {request.verbosity}")
         
         # Prepare Response API parameters with persona instructions
         response_params = {
@@ -295,6 +294,7 @@ async def chat(
             "input": input_data,
             "instructions": persona['text'],  # Full markdown content from persona instructions
             "tools": [{"type": "web_search"}],  # Enable web search
+            "store": True,  # Store response for conversation state management
             "text": {
                 "verbosity": request.verbosity
             },
@@ -307,9 +307,12 @@ async def chat(
             }
         }
         
+        # Add previous_response_id for conversation state management
+        if request.previous_response_id:
+            response_params["previous_response_id"] = request.previous_response_id
+        
         # Add temperature and max_tokens if specified
-        if temperature != 0.7:
-            response_params["temperature"] = temperature
+        response_params["temperature"] = temperature
         if max_tokens and max_tokens > 0:
             response_params["max_tokens"] = max_tokens
         
@@ -349,8 +352,7 @@ async def chat(
                                 "model": current_fallback,
                                 "messages": openai_messages
                             }
-                            if temperature != 0.7:
-                                chat_params["temperature"] = temperature
+                            chat_params["temperature"] = temperature
                             if max_tokens and max_tokens > 0:
                                 chat_params["max_tokens"] = max_tokens
 
@@ -372,8 +374,7 @@ async def chat(
                             "model": current_model,
                             "messages": openai_messages
                         }
-                        if temperature != 0.7:
-                            chat_params["temperature"] = temperature
+                        chat_params["temperature"] = temperature
                         if max_tokens and max_tokens > 0:
                             chat_params["max_tokens"] = max_tokens
 
@@ -394,6 +395,10 @@ async def chat(
                 # Extract the output text
                 output_text = ""
                 reasoning_summary = None
+                
+                # Debug: Log response structure
+                logger.debug(f"Request {request_id}: Response type: {type(response)}")
+                logger.debug(f"Request {request_id}: Response attributes: {dir(response)}")
                 
                 # Handle both Response API and MockResponse formats
                 if hasattr(response, 'output_text'):
@@ -430,6 +435,16 @@ async def chat(
                     'model': final_model_used,
                     'instructions_sha256': persona['sha256']
                 }
+                
+                # Extract response_id from Responses API for conversation state
+                response_id = None
+                if hasattr(response, 'id'):
+                    response_id = response.id
+                    metadata['response_id'] = response_id
+                    logger.info(f"Request {request_id}: Extracted response_id: {response_id}")
+                else:
+                    logger.warning(f"Request {request_id}: No response.id found in response object")
+                
                 yield f"data: {json.dumps({'metadata': metadata})}\n\n"
                 
                 # Send completion signal

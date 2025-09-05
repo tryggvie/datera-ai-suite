@@ -157,18 +157,24 @@
     <main class="flex-1 flex flex-col bg-white">
         <!-- Main Header (Combined) -->
         <header class="h-16 flex justify-between items-center px-6 border-b border-gray-200 shrink-0">
-            <!-- Left Side: Chat Info -->
+            <!-- Left Side: Bot Info -->
             <div>
                  <p class="text-xs text-gray-500 mb-1">You are currently talking to...</p>
-                 <div class="flex items-center">
-                     <span id="current-bot-name" class="font-bold text-lg text-gray-800">General Assistant</span>
-                     <span class="mx-2 text-gray-400 text-lg">//</span>
-                     <div class="flex items-center group">
-                        <span id="conversation-title" class="font-medium text-lg text-gray-800">New Conversation</span>
-                        <button id="rename-conversation-button" class="ml-2 text-gray-400 hover:text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-                        </button>
-                     </div>
+                 <div class="flex items-center space-x-4">
+                     <span id="current-bot-name" class="font-bold text-lg text-gray-800">Marketing Comms Strategist</span>
+                     
+                             <!-- Mode Switch (only for select bots) -->
+        <div id="mode-switch" class="hidden flex items-center space-x-1 bg-gray-100 rounded-lg p-1">
+            <button id="mode-strategic" class="mode-button px-3 py-1 text-xs font-medium rounded-md transition-colors bg-white text-gray-900 shadow-sm" title="For plans, messaging frameworks, PR briefs, risk/mitigation">
+                Strategic
+            </button>
+            <button id="mode-balanced" class="mode-button px-3 py-1 text-xs font-medium rounded-md transition-colors text-gray-600 hover:text-gray-900" title="For everyday ideation with some novelty">
+                Balanced
+            </button>
+            <button id="mode-creative" class="mode-button px-3 py-1 text-xs font-medium rounded-md transition-colors text-gray-600 hover:text-gray-900" title="For slogans, hooks, headlines, campaign concepts">
+                Creative
+            </button>
+        </div>
                  </div>
             </div>
             <!-- Right Side: User Profile -->
@@ -341,12 +347,21 @@
         // --- Global State ---
         let currentConversationId = 'conv1';
         let currentBotId = 'general';
+        let currentMode = 'strategic'; // strategic, balanced, creative
         let bots = [];
+        
+        // Mode temperature mapping
+        const modeTemperatures = {
+            'strategic': 0.3,
+            'balanced': 0.5,
+            'creative': 0.8
+        };
         let conversations = [];
         let messages = {};
         let folders = [];
         let stagedImage = null;
         let isStreaming = false;
+        let lastResponseId = null; // Store response_id for conversation state
 
         // --- Data Persistence ---
         function saveConversations() {
@@ -392,6 +407,12 @@
                 if (savedCurrentBot) {
                     currentBotId = savedCurrentBot;
                 }
+                
+                // Load saved mode
+                const savedMode = localStorage.getItem('ai-suite-current-mode');
+                if (savedMode && ['strategic', 'balanced', 'creative'].includes(savedMode)) {
+                    currentMode = savedMode;
+                }
             } catch (e) {
                 console.error('Failed to load conversations:', e);
                 // Fallback to defaults
@@ -412,8 +433,10 @@
         const userMenu = document.getElementById('user-menu');
         const logoutButton = document.getElementById('logout-button');
         const currentBotNameDisplay = document.getElementById('current-bot-name');
-        const conversationTitleDisplay = document.getElementById('conversation-title');
-        const renameConvButton = document.getElementById('rename-conversation-button');
+        const modeSwitch = document.getElementById('mode-switch');
+        const modeStrategic = document.getElementById('mode-strategic');
+        const modeBalanced = document.getElementById('mode-balanced');
+        const modeCreative = document.getElementById('mode-creative');
         const convContextMenu = document.getElementById('conversation-context-menu');
         const newFolderButton = document.getElementById('new-folder-button');
         const uploadButton = document.getElementById('upload-button');
@@ -421,6 +444,18 @@
         const attachmentPreviewContainer = document.getElementById('attachment-preview-container');
         const attachmentThumbnail = document.getElementById('attachment-thumbnail');
         const removeAttachmentButton = document.getElementById('remove-attachment-button');
+
+        // --- Message Conversion ---
+        function convertMessagesForAPI(frontendMessages) {
+            return frontendMessages.map(msg => {
+                if (msg.sender === 'user') {
+                    return { role: 'user', content: msg.text };
+                } else if (msg.sender === 'bot') {
+                    return { role: 'assistant', content: msg.text };
+                }
+                return null;
+            }).filter(msg => msg !== null);
+        }
 
         // --- App Initialization ---
         document.addEventListener('DOMContentLoaded', async () => {
@@ -449,6 +484,7 @@
         
         function initializeAppData() {
             renderBots();
+            initializeModeSwitch();
             loadConversation(currentConversationId);
         }
         
@@ -538,18 +574,22 @@
                     currentBotId = conv.botId;
                     const bot = bots.find(b => b.id === currentBotId);
                     currentBotNameDisplay.textContent = bot ? bot.name : 'Unknown Bot';
-                    conversationTitleDisplay.textContent = conv.title || 'Conversation';
+                    updateModeSwitch();
                     renderConversationList();
                 }
                 return;
              }
+             
+             // Reset response_id when switching conversations
+             lastResponseId = null;
+             
              currentConversationId = convId;
              const conv = conversations.find(c => c.id === convId);
              if (conv) {
                 currentBotId = conv.botId;
                 const bot = bots.find(b => b.id === currentBotId);
                 currentBotNameDisplay.textContent = bot ? bot.name : 'Unknown Bot';
-                conversationTitleDisplay.textContent = conv.title || 'Conversation';
+                updateModeSwitch();
                 renderConversationList();
                 renderMessages();
              }
@@ -609,6 +649,48 @@
              wrapper.appendChild(bubble);
              chatOutput.appendChild(wrapper);
              chatOutput.scrollTop = chatOutput.scrollHeight;
+        }
+
+        // --- Mode Switching Functions ---
+        function updateModeSwitch() {
+            // Show mode switch only for select bots (currently just general/marketing strategist)
+            const botsWithModeSwitch = ['general'];
+            if (botsWithModeSwitch.includes(currentBotId)) {
+                modeSwitch.classList.remove('hidden');
+            } else {
+                modeSwitch.classList.add('hidden');
+            }
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            
+            // Save mode to localStorage
+            localStorage.setItem('ai-suite-current-mode', mode);
+            
+            // Update button styles
+            const buttons = [modeStrategic, modeBalanced, modeCreative];
+            const modes = ['strategic', 'balanced', 'creative'];
+            
+            buttons.forEach((button, index) => {
+                if (modes[index] === mode) {
+                    button.className = 'mode-button px-3 py-1 text-xs font-medium rounded-md transition-colors bg-white text-gray-900 shadow-sm';
+                } else {
+                    button.className = 'mode-button px-3 py-1 text-xs font-medium rounded-md transition-colors text-gray-600 hover:text-gray-900';
+                }
+            });
+            
+            console.log(`Mode switched to: ${mode} (temperature: ${modeTemperatures[mode]})`);
+        }
+
+        function initializeModeSwitch() {
+            // Set up event listeners
+            modeStrategic.addEventListener('click', () => setMode('strategic'));
+            modeBalanced.addEventListener('click', () => setMode('balanced'));
+            modeCreative.addEventListener('click', () => setMode('creative'));
+            
+            // Initialize with current mode (loaded from localStorage or default 'strategic')
+            setMode(currentMode);
         }
 
         async function sendMessage() {
@@ -697,11 +779,13 @@
                         'Authorization': `Bearer ${GATEWAY_TOKEN}`
                     },
                     body: JSON.stringify({
-                        messages: [{ role: 'user', content: text }],
+                        messages: convertMessagesForAPI(messages[currentConversationId] || []),
                         bot_id: personaId,
                         model: 'gpt-5',
                         verbosity: 'medium',
-                        reasoning_effort: 'medium'
+                        reasoning_effort: 'medium',
+                        temperature: modeTemperatures[currentMode],
+                        previous_response_id: lastResponseId
                     })
                 });
 
@@ -744,6 +828,11 @@
                                     botResponse += data.content;
                                     textP.innerHTML = parseMarkdownLinks(botResponse);
                                     chatOutput.scrollTop = chatOutput.scrollHeight;
+                                }
+                                if (data.metadata && data.metadata.response_id) {
+                                    // Store response_id for conversation state
+                                    lastResponseId = data.metadata.response_id;
+                                    console.log('Stored response_id:', lastResponseId);
                                 }
                                 if (data.done) {
                                     // Add to messages
@@ -868,7 +957,6 @@
                     loadConversation(conversations[0].id)
                 } else {
                     chatOutput.innerHTML = '<div class="text-center text-gray-500 text-sm">No conversations. Start a new one!</div>';
-                    conversationTitleDisplay.textContent = "";
                     currentBotNameDisplay.textContent = "";
                 }
             }
@@ -948,9 +1036,6 @@
              }, currentTitle);
         }
         
-        renameConvButton.addEventListener('click', () => {
-             if(currentConversationId) renameConversation(currentConversationId);
-        });
 
         // --- Attachment Logic ---
         uploadButton.addEventListener('click', () => fileInput.click());
